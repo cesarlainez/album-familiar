@@ -153,7 +153,18 @@
           $('btnSalir').hidden = false;
           await cargarAlbum();
         } catch (err) {
-          $('candadoError').hidden = false;
+          console.error('[Candado] Fallo de inicio de sesión:', err);
+          const msg = String((err && err.message) || '');
+          const el = $('candadoError');
+          if (/not confirmed/i.test(msg)) {
+            el.textContent =
+              'La cuenta existe pero no está confirmada. En Supabase: Authentication → Users → ⋮ → Confirm email.';
+          } else if (/invalid login/i.test(msg)) {
+            el.textContent = 'Clave incorrecta. Intenta de nuevo.';
+          } else {
+            el.textContent = 'No se pudo entrar: ' + (msg || 'error desconocido');
+          }
+          el.hidden = false;
           $('candadoClave').select();
         } finally {
           boton.disabled = false;
