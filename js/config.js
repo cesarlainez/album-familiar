@@ -20,7 +20,7 @@ window.ALBUM_CONFIG = {
   /* Clave PÚBLICA (esquema nuevo de Supabase: "publishable"). Segura en el
      frontend; lo que protege los datos son las políticas RLS. Si la conexión
      fallara con esta, usa la anon "eyJ..." de Settings → API Keys → Legacy. */
-  SUPABASE_ANON_KEY: 'sb_publishable_ivgnraaRONBN7nvkmoo_IQ_F6JVOw5z',
+    SUPABASE_ANON_KEY: 'sb_publishable_ivgnraaRONBN7nvkmoo_IQ_F6JVOw5z',
 
   /* Tenant por defecto. Al añadir Auth, saldrá del JWT del usuario. */
   TENANT_POR_DEFECTO: 'Familia_Lainez',
