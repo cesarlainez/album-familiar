@@ -66,11 +66,26 @@ drop policy if exists "escritura publica perfiles" on public.perfiles;
 drop policy if exists "edicion publica perfiles" on public.perfiles;
 drop policy if exists "borrado publico perfiles" on public.perfiles;
 
+-- Ver el álbum NO requiere clave (modo solo lectura para visitantes).
+drop policy if exists "lectura publica perfiles" on public.perfiles;
+create policy "lectura publica perfiles"
+  on public.perfiles for select
+  to anon, authenticated
+  using (true);
+
+-- Editar SÍ requiere la clave familiar (sesión autenticada).
 drop policy if exists "familia autenticada todo" on public.perfiles;
-create policy "familia autenticada todo"
-  on public.perfiles for all
-  to authenticated
+create policy "familia autenticada escribe"
+  on public.perfiles for insert to authenticated with check (true);
+
+drop policy if exists "familia autenticada edita" on public.perfiles;
+create policy "familia autenticada edita"
+  on public.perfiles for update to authenticated
   using (true) with check (true);
+
+drop policy if exists "familia autenticada borra" on public.perfiles;
+create policy "familia autenticada borra"
+  on public.perfiles for delete to authenticated using (true);
 
 -- ┌───────────────────────────────────────────────────────────┐
 -- │ ITERACIÓN 3 (cuando actives Auth): descomenta lo de abajo   │

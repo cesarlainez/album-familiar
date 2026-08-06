@@ -225,16 +225,29 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(circle at 50% 40%, #1c1c1c 0%, var(--gris-carbon) 45%, var(--negro-profundo) 90%);
+}
+
+.candado__velo {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .candado__caja {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 14px;
   width: min(340px, 88vw);
   text-align: center;
+  padding: 34px 28px;
+  background: linear-gradient(150deg, #151515 0%, #0a0a0a 100%);
+  border-radius: 4px;
+  box-shadow:
+    0 50px 110px -28px rgba(0, 0, 0, 1),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .candado__titulo {
@@ -268,6 +281,18 @@ body {
   font-size: 11px;
   color: #d98a8a;
   letter-spacing: 0.06em;
+}
+
+/* ── Modo solo lectura ───────────────────────────────────────
+   Sin la clave, el álbum se ve pero no se edita: se ocultan las
+   acciones de CRUD, el alta del estado vacío y la subida de fotos.
+   (La seguridad real la aplica el RLS del servidor; esto es la UI.) */
+
+body:not(.modo-edicion) .ficha-acciones,
+body:not(.modo-edicion) #btnPrimeraPersona,
+body:not(.modo-edicion) .lienzo-vacio__nota,
+body:not(.modo-edicion) .btn-subir {
+  display: none !important;
 }
 
 /* ── Editor: filas de fotografía con botón de subida ─────────── */

@@ -38,15 +38,16 @@
         <datalist id="familias"></datalist>
       </div>
       <button class="btn-fantasma" id="btnCentrar" title="Centrar la constelación (tecla C)">Centrar</button>
-      <button class="btn-fantasma" id="btnSalir" title="Cerrar sesión en este dispositivo" hidden>Salir</button>
+      <button class="btn-fantasma" id="btnSesion" title="Ingresar la clave para editar" hidden>Iniciar</button>
     </nav>
   </header>
 
-  <!-- ═══ Candado: clave familiar (Supabase Auth compartida) ═══ -->
+  <!-- ═══ Candado: clave familiar para el modo edición ═══ -->
   <div class="candado" id="candado" hidden>
+    <div class="candado__velo" data-cerrar-candado></div>
     <div class="candado__caja">
-      <p class="candado__titulo">Álbum Familiar</p>
-      <p class="candado__nota">Este álbum es privado. Ingresa la clave familiar.</p>
+      <p class="candado__titulo">Modo edición</p>
+      <p class="candado__nota">Ingresa la clave familiar para editar el álbum.</p>
       <form class="candado__form" id="candadoForm">
         <input
           class="campo__input candado__input"
@@ -57,6 +58,7 @@
           aria-label="Clave familiar"
         />
         <button class="btn-crud btn-crud--primario" type="submit">Entrar</button>
+        <button class="btn-crud" type="button" data-cerrar-candado>Cancelar</button>
       </form>
       <p class="candado__error" id="candadoError" hidden>Clave incorrecta. Intenta de nuevo.</p>
     </div>
@@ -248,12 +250,12 @@
   <!-- SDK de Supabase (UMD): expone window.supabase. Sin build step. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <script src="js/config.js?v=8"></script>
-  <script src="js/servicios/supabase.js?v=8"></script>
-  <script src="js/datos.js?v=8"></script>
-  <script src="js/lienzo.js?v=8"></script>
-  <script src="js/perfil.js?v=8"></script>
-  <script src="js/mantenimiento.js?v=8"></script>
-  <script src="js/app.js?v=8"></script>
+  <script src="js/config.js?v=9"></script>
+  <script src="js/servicios/supabase.js?v=9"></script>
+  <script src="js/datos.js?v=9"></script>
+  <script src="js/lienzo.js?v=9"></script>
+  <script src="js/perfil.js?v=9"></script>
+  <script src="js/mantenimiento.js?v=9"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>

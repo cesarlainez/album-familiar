@@ -143,12 +143,15 @@
     async obtenerPerfiles(idFamilia = TENANT_ACTIVO) {
       const svc = conBackend();
       if (svc) {
+        /* Con backend configurado, la nube es la ÚNICA verdad: si viene
+           vacía o falla, se muestra vacío. Caer a la semilla local aquí
+           enseñaría datos ficticios como si fueran reales (p. ej. a un
+           visitante sin clave si el RLS no le deja leer). */
         try {
-          const filas = await svc.obtenerPerfiles(idFamilia);
-          if (filas.length) return filas;
-          console.warn('[AlbumDatos] Backend sin filas para', idFamilia, '— uso datos locales.');
+          return await svc.obtenerPerfiles(idFamilia);
         } catch (e) {
-          console.error('[AlbumDatos] Error consultando Supabase — uso datos locales.', e);
+          console.error('[AlbumDatos] Error consultando Supabase.', e);
+          return [];
         }
       }
       return datosLocales.filter((p) => p.id_familia === idFamilia);

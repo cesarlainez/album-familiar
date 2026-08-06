@@ -137,21 +137,42 @@
       await rellenarFamilias();
     };
 
-    /* ── Candado: clave familiar ────────────────────────────────
-       Con backend + protección activa, el álbum no se carga hasta
-       entrar con la clave. La sesión queda recordada por dispositivo,
-       así que solo se pide la primera vez. */
+    /* ── Modo lectura / edición ─────────────────────────────────
+       El álbum se ve SIN clave (solo lectura). La clave familiar
+       desbloquea la edición: activa `modo-edicion` en <body>, que es
+       lo que revela los botones de CRUD y de subida de fotos.
+       El candado es opcional y se abre desde el botón del encabezado. */
+    const aplicarModo = (hayS) => {
+      document.body.classList.toggle('modo-edicion', !!hayS);
+      const btn = $('btnSesion');
+      btn.textContent = hayS ? 'Salir' : 'Iniciar';
+      btn.title = hayS
+        ? 'Salir del modo edición en este dispositivo'
+        : 'Ingresar la clave para editar';
+      btn.hidden = false;
+    };
+
+    const cerrarCandado = () => {
+      $('candado').hidden = true;
+      $('candadoError').hidden = true;
+      $('candadoClave').value = '';
+    };
+
     if (cfg.hayBackend && cfg.PROTEGER_CON_CLAVE) {
+      $('candado')
+        .querySelectorAll('[data-cerrar-candado]')
+        .forEach((el) => el.addEventListener('click', cerrarCandado));
+
       $('candadoForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const boton = e.target.querySelector('button[type="submit"]');
         boton.disabled = true;
         try {
           await SupabaseServicio.entrarConClave($('candadoClave').value);
-          $('candadoError').hidden = true;
-          $('candado').hidden = true;
-          $('btnSalir').hidden = false;
-          await cargarAlbum();
+          cerrarCandado();
+          aplicarModo(true);
+          await cargarAlbum(); // relee ya autenticado
+          toast('Modo edición activado');
         } catch (err) {
           console.error('[Candado] Fallo de inicio de sesión:', err);
           const msg = String((err && err.message) || '');
@@ -171,18 +192,27 @@
         }
       });
 
-      $('btnSalir').addEventListener('click', async () => {
-        await SupabaseServicio.salir();
-        location.reload();
+      $('btnSesion').addEventListener('click', async () => {
+        if (document.body.classList.contains('modo-edicion')) {
+          await SupabaseServicio.salir();
+          if (perfil.abierto) perfil.cerrar();
+          aplicarModo(false);
+          await cargarAlbum();
+          toast('Modo solo lectura');
+        } else {
+          $('candado').hidden = false;
+          $('candadoClave').focus();
+        }
       });
 
-      const sesion = await SupabaseServicio.sesion();
-      if (!sesion) {
-        $('candado').hidden = false;
-        $('candadoClave').focus();
-        return; // el álbum se cargará al entrar con la clave
-      }
-      $('btnSalir').hidden = false;
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !$('candado').hidden) cerrarCandado();
+      });
+
+      aplicarModo(!!(await SupabaseServicio.sesion()));
+    } else {
+      /* Sin backend (modo maqueta local): todo editable, sin candado. */
+      document.body.classList.add('modo-edicion');
     }
 
     await cargarAlbum();
