@@ -32,7 +32,7 @@ window.ALBUM_CONFIG = {
      y cuya contraseña es la clave que la familia teclea.
      La sesión se recuerda por dispositivo (localStorage). */
   PROTEGER_CON_CLAVE: true,
-  AUTH_EMAIL: 'familia@album-lainez.app',
+  AUTH_EMAIL: 'cesarlainez@hotmail.com',
 };
 
 /* ¿Hay credenciales reales o seguimos en modo local? */
