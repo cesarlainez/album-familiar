@@ -1,0 +1,13 @@
+{
+  "name": "album-familiar-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Scripts de backend (seed) para Álbum Familiar sobre Supabase",
+  "scripts": {
+    "seed": "node seed.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}

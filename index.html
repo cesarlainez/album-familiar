@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Álbum Familiar — La Galería Nocturna</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Montserrat:wght@200;300;400;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/galeria.css" />
+</head>
+<body>
+
+  <!-- ═══ Grano y viñeta: capas atmosféricas de la sala ═══ -->
+  <div class="atmosfera" aria-hidden="true">
+    <div class="vinieta"></div>
+    <div class="grano"></div>
+  </div>
+
+  <!-- ═══ Encabezado flotante ═══ -->
+  <header class="cabecera">
+    <div class="cabecera__marca">
+      <span class="cabecera__titulo">Álbum Familiar</span>
+      <span class="cabecera__tenant" id="tenantLabel">Familia Lainez</span>
+    </div>
+    <nav class="cabecera__acciones">
+      <div class="cabecera__familia">
+        <input
+          class="cabecera__buscar"
+          id="buscarFamilia"
+          list="familias"
+          placeholder="Buscar o cambiar de familia…"
+          autocomplete="off"
+          aria-label="Buscar o cambiar de familia"
+        />
+        <datalist id="familias"></datalist>
+      </div>
+      <button class="btn-fantasma" id="btnCentrar" title="Centrar la constelación (tecla C)">Centrar</button>
+    </nav>
+  </header>
+
+  <!-- ═══ Aviso de persistencia (p. ej. abierto por file://) ═══ -->
+  <div class="aviso" id="avisoPersistencia" hidden></div>
+
+  <!-- ═══ Notificación breve (toast) ═══ -->
+  <div class="toast" id="toast" hidden></div>
+
+  <!-- ═══ El lienzo: la constelación familiar ═══ -->
+  <main
+    class="lienzo"
+    id="lienzo"
+    role="application"
+    aria-label="Constelación familiar. Arrastra para desplazar, rueda para acercar."
+  >
+    <!-- Capa transformada: se mueve y escala en bloque -->
+    <div class="mundo" id="mundo">
+      <!-- Hilos de luz (SVG por debajo de los nodos) -->
+      <svg class="hilos" id="hilos" aria-hidden="true">
+        <defs>
+          <linearGradient id="gradHilo" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#f5e6c8" stop-opacity="0.05" />
+            <stop offset="50%"  stop-color="#fff8e7" stop-opacity="0.55" />
+            <stop offset="100%" stop-color="#f5e6c8" stop-opacity="0.05" />
+          </linearGradient>
+          <filter id="brilloHilo" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2.5" result="difuso" />
+            <feMerge>
+              <feMergeNode in="difuso" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <g id="capaHilos"></g>
+      </svg>
+
+      <!-- Nodos (perfiles) inyectados por JS -->
+      <div class="nodos" id="nodos"></div>
+    </div>
+
+    <!-- Estado vacío: familia sin perfiles todavía -->
+    <div class="lienzo-vacio" id="lienzoVacio" hidden>
+      <p class="lienzo-vacio__titulo" id="lienzoVacioTitulo">Esta familia aún no tiene perfiles</p>
+      <p class="lienzo-vacio__nota">Comienza agregando a la primera persona del árbol.</p>
+      <button class="btn-crud btn-crud--primario" id="btnPrimeraPersona">Agregar primera persona</button>
+    </div>
+  </main>
+
+  <!-- ═══ Indicador de zoom ═══ -->
+  <div class="zoom-hud" id="zoomHud" aria-hidden="true">100%</div>
+
+  <!-- ═══ Flip Card 3D del perfil ═══ -->
+  <div class="flip-capa" id="flipCapa" hidden>
+    <div class="flip-velo" id="flipVelo" data-cerrar></div>
+
+    <div class="carta" id="flipCarta" role="dialog" aria-modal="true" aria-labelledby="modalNombre">
+      <div class="carta__flip" id="flipInner">
+
+        <!-- FRENTE: fotografía + nombre -->
+        <div class="carta__cara carta__frente">
+          <div class="frente__marco">
+            <img class="frente__foto" id="frenteFoto" alt="" draggable="false" />
+            <div class="frente__placeholder" id="frentePlaceholder" hidden></div>
+            <div class="frente__halo"></div>
+          </div>
+          <h2 class="frente__nombre" id="frenteNombre"></h2>
+        </div>
+
+        <!-- REVERSO: información + mini carrusel + CRUD -->
+        <div class="carta__cara carta__reverso">
+          <button class="carta__cerrar" data-cerrar aria-label="Cerrar">&times;</button>
+          <div class="reverso__scroll">
+
+            <!-- Mini carrusel de fotos adicionales -->
+            <section class="mini-carrusel" aria-label="Galería de fotografías">
+              <div class="carrusel__marco" id="carruselMarco">
+                <img class="carrusel__foto" id="carruselFoto" alt="" />
+                <div class="carrusel__vacio" id="carruselVacio" hidden></div>
+                <button class="carrusel__lupa" id="btnPantallaCompleta" title="Ver en pantalla completa" aria-label="Ver en pantalla completa">⛶</button>
+              </div>
+              <div class="carrusel__control">
+                <button class="carrusel__flecha" id="fotoPrev" aria-label="Fotografía anterior">‹</button>
+                <div class="carrusel__puntos" id="carruselPuntos"></div>
+                <button class="carrusel__flecha" id="fotoNext" aria-label="Fotografía siguiente">›</button>
+              </div>
+            </section>
+
+            <!-- Datos (lectura) -->
+            <div class="ficha-lectura" id="fichaLectura">
+              <p class="ficha-datos__disciplina" id="modalDisciplina"></p>
+              <h2 class="ficha-datos__nombre" id="modalNombre"></h2>
+              <p class="ficha-datos__fechas" id="modalFechas"></p>
+
+              <div class="ficha-datos__bloque">
+                <h3 class="ficha-datos__etiqueta">Obra maestra</h3>
+                <p class="ficha-datos__texto" id="modalObra"></p>
+              </div>
+
+              <div class="ficha-datos__bloque">
+                <h3 class="ficha-datos__etiqueta">Biografía</h3>
+                <p class="ficha-datos__texto" id="modalBio"></p>
+              </div>
+
+              <!-- Barra de acciones CRUD -->
+              <div class="ficha-acciones">
+                <button class="btn-crud" data-accion="editar">Editar</button>
+                <button class="btn-crud" data-accion="pareja">+ Pareja</button>
+                <button class="btn-crud" data-accion="hijo">+ Hijo</button>
+                <button class="btn-crud" data-accion="progenitor">+ Padre/Madre</button>
+                <button class="btn-crud btn-crud--peligro" data-accion="eliminar">Eliminar</button>
+              </div>
+            </div>
+
+            <!-- Formulario de edición -->
+            <form class="ficha-editor" id="fichaEditor" hidden>
+              <h3 class="ficha-editor__titulo">Editar perfil</h3>
+
+              <label class="campo">
+                <span class="campo__etiqueta">Nombre completo</span>
+                <input class="campo__input" id="editNombre" type="text" autocomplete="off" />
+              </label>
+
+              <div class="campo-fila">
+                <label class="campo">
+                  <span class="campo__etiqueta">Nacimiento</span>
+                  <input class="campo__input" id="editNacimiento" type="date" />
+                </label>
+                <label class="campo">
+                  <span class="campo__etiqueta">Fallecimiento</span>
+                  <input class="campo__input" id="editFallecimiento" type="date" />
+                </label>
+              </div>
+
+              <label class="campo">
+                <span class="campo__etiqueta">Disciplina artística</span>
+                <input class="campo__input" id="editDisciplina" type="text" autocomplete="off" />
+              </label>
+
+              <label class="campo">
+                <span class="campo__etiqueta">Obra maestra</span>
+                <textarea class="campo__input campo__area" id="editObra" rows="2"></textarea>
+              </label>
+
+              <label class="campo">
+                <span class="campo__etiqueta">Biografía</span>
+                <textarea class="campo__input campo__area" id="editBio" rows="3"></textarea>
+              </label>
+
+              <fieldset class="campo campo--fotos">
+                <span class="campo__etiqueta">Fotografías (URL, hasta 3)</span>
+                <input class="campo__input" id="editFoto1" type="url" placeholder="https://…" />
+                <input class="campo__input" id="editFoto2" type="url" placeholder="https://…" />
+                <input class="campo__input" id="editFoto3" type="url" placeholder="https://…" />
+              </fieldset>
+
+              <div class="ficha-editor__acciones">
+                <button class="btn-crud btn-crud--primario" type="submit">Guardar</button>
+                <button class="btn-crud" type="button" id="editCancelar">Cancelar</button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Visor a pantalla completa ═══ -->
+  <div class="visor" id="visor" hidden>
+    <button class="visor__cerrar" id="visorCerrar" aria-label="Salir de pantalla completa">&times;</button>
+    <img class="visor__foto" id="visorFoto" alt="" />
+  </div>
+
+  <!-- SDK de Supabase (UMD): expone window.supabase. Sin build step. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <script src="js/config.js?v=7"></script>
+  <script src="js/servicios/supabase.js?v=7"></script>
+  <script src="js/datos.js?v=7"></script>
+  <script src="js/lienzo.js?v=7"></script>
+  <script src="js/perfil.js?v=7"></script>
+  <script src="js/mantenimiento.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
+</body>
+</html>

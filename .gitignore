@@ -1,0 +1,11 @@
+# Dependencias
+node_modules/
+
+# Secretos: la service_role key jamás debe entrar al repo
+backend/.env
+.env
+*.local
+
+# Sistema
+.DS_Store
+Thumbs.db

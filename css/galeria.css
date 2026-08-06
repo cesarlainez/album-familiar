@@ -1,0 +1,1169 @@
+/* ══════════════════════════════════════════════════════════════
+   ÁLBUM FAMILIAR — "La Galería Nocturna"
+   Hoja de estilo base. CSS puro, sin dependencias.
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Paleta */
+  --negro-profundo: #000000;
+  --gris-carbon:    #1a1a1a;
+  --gris-humo:      #232323;
+  --blanco-brillo:  #ffffff;
+  --gris-claro:     #a8a8a8;
+  --gris-tenue:     #6b6b6b;
+  --luz-calida:     #fff8e7;
+  --luz-ambar:      #f5e6c8;
+
+  /* Tipografía */
+  --fuente-titulo: 'Montserrat', system-ui, sans-serif;
+  --fuente-texto:  'Inter', system-ui, sans-serif;
+
+  /* Ritmo */
+  --curva: cubic-bezier(0.22, 1, 0.36, 1);
+  --lento: 900ms;
+  --medio: 450ms;
+  --rapido: 220ms;
+
+  /* Geometría de nodo (compartida con JS vía getComputedStyle si hiciera falta) */
+  --nodo-ancho: 168px;
+  --nodo-alto:  228px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* El atributo `hidden` SIEMPRE gana sobre un `display` del autor. Sin esto,
+   reglas como `.visor{display:flex}` dejan el overlay presente (invisible)
+   e interceptan el mouse sobre el lienzo. */
+[hidden] { display: none !important; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--negro-profundo);
+}
+
+body {
+  font-family: var(--fuente-texto);
+  color: var(--gris-claro);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Atmósfera: viñeta + grano fotográfico ───────────────────── */
+
+.atmosfera {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.vinieta {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0) 35%,
+    rgba(0, 0, 0, 0.55) 78%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+}
+
+/* Grano sutil generado con un SVG inline en data-URI (sin assets externos) */
+.grano {
+  position: absolute;
+  inset: -50%;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: deriva 8s steps(4) infinite;
+}
+
+@keyframes deriva {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(-2%, 1%); }
+  50%      { transform: translate(1%, -2%); }
+  75%      { transform: translate(2%, 2%); }
+}
+
+/* ── Cabecera ────────────────────────────────────────────────── */
+
+.cabecera {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px 40px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
+}
+
+.cabecera__marca {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cabecera__titulo {
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 15px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--blanco-brillo);
+}
+
+.cabecera__tenant {
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gris-tenue);
+}
+
+.cabecera__acciones {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cabecera__buscar {
+  font-family: var(--fuente-texto);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gris-claro);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  padding: 10px 14px;
+  width: 210px;
+  transition: color var(--rapido) var(--curva),
+              border-color var(--rapido) var(--curva),
+              background var(--rapido) var(--curva);
+}
+
+.cabecera__buscar::placeholder {
+  color: var(--gris-tenue);
+  letter-spacing: 0.14em;
+}
+
+.cabecera__buscar:focus {
+  outline: none;
+  color: var(--blanco-brillo);
+  border-color: rgba(255, 248, 231, 0.45);
+  background: rgba(255, 248, 231, 0.05);
+}
+
+/* ── Estado vacío del lienzo ─────────────────────────────────── */
+
+.lienzo-vacio {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  padding: 40px;
+  pointer-events: none;
+}
+
+.lienzo-vacio > * { pointer-events: auto; }
+
+.lienzo-vacio__titulo {
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  color: var(--blanco-brillo);
+}
+
+.lienzo-vacio__nota {
+  font-size: 12px;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: var(--gris-tenue);
+  margin-top: -6px;
+}
+
+/* ── Aviso de persistencia (banner) ──────────────────────────── */
+
+.aviso {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  max-width: min(680px, 92vw);
+  padding: 12px 18px;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: #f3e2c0;
+  background: rgba(60, 45, 20, 0.92);
+  border: 1px solid rgba(245, 230, 200, 0.3);
+  border-radius: 3px;
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.9);
+  text-align: center;
+}
+
+.aviso strong { color: #fff; font-weight: 500; }
+
+/* ── Toast (notificación breve) ──────────────────────────────── */
+
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  z-index: 70;
+  padding: 11px 20px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--negro-profundo);
+  background: var(--luz-calida);
+  border-radius: 2px;
+  box-shadow: 0 20px 50px -18px rgba(0, 0, 0, 0.9);
+  opacity: 0;
+  transition: opacity var(--medio) var(--curva),
+              transform var(--medio) var(--curva);
+}
+
+.toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.btn-fantasma {
+  font-family: var(--fuente-texto);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gris-claro);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: color var(--rapido) var(--curva),
+              border-color var(--rapido) var(--curva),
+              background var(--rapido) var(--curva);
+}
+
+.btn-fantasma:hover {
+  color: var(--blanco-brillo);
+  border-color: rgba(255, 248, 231, 0.4);
+  background: rgba(255, 248, 231, 0.04);
+}
+
+/* ── Lienzo y mundo transformado ─────────────────────────────── */
+
+.lienzo {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 45%, #232323 0%, var(--gris-carbon) 40%, var(--negro-profundo) 85%);
+  cursor: grab;
+  touch-action: none;
+  overflow: hidden;
+}
+
+.lienzo.arrastrando { cursor: grabbing; }
+
+.mundo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* El SVG de hilos vive en un plano amplio centrado en el origen del mundo */
+.hilos {
+  position: absolute;
+  left: -5000px;
+  top: -5000px;
+  width: 10000px;
+  height: 10000px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.hilo {
+  fill: none;
+  stroke: url(#gradHilo);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  filter: url(#brilloHilo);
+  opacity: 0;
+  animation: encender var(--lento) var(--curva) forwards;
+}
+
+@keyframes encender {
+  from { opacity: 0; stroke-dashoffset: var(--largo); }
+  to   { opacity: 1; stroke-dashoffset: 0; }
+}
+
+/* Partícula que recorre el hilo: la "luz" viajando entre generaciones */
+.chispa {
+  fill: var(--luz-calida);
+  filter: url(#brilloHilo);
+  opacity: 0.7;
+}
+
+/* Lazo de pareja: deliberadamente distinto al hilo de filiación.
+   Punteado, en ámbar cálido, sin gradiente frío. */
+.lazo {
+  fill: none;
+  stroke: var(--luz-ambar);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1 8;
+  filter: url(#brilloHilo);
+  opacity: 0;
+  animation: aparecerLazo var(--lento) var(--curva) forwards;
+}
+
+@keyframes aparecerLazo {
+  from { opacity: 0; }
+  to   { opacity: 0.85; }
+}
+
+/* Punto de unión: nudo de luz en el centro del matrimonio.
+   Es también el origen de los hilos hacia los hijos. */
+.lazo-union {
+  fill: var(--luz-calida);
+  filter: url(#brilloHilo);
+  opacity: 0;
+  animation: latirNudo 3.4s ease-in-out infinite both;
+}
+
+/* Late suavemente en bucle (nunca se apaga del todo). El animation-delay
+   inline lo hace aparecer justo tras encenderse los lazos. */
+@keyframes latirNudo {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+/* ── Nodos (perfiles) ────────────────────────────────────────── */
+
+.nodos { position: absolute; top: 0; left: 0; }
+
+.nodo {
+  position: absolute;
+  width: var(--nodo-ancho);
+  z-index: 1;
+  /* JS posiciona con left/top en el centro; corregimos al centro real aquí */
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  user-select: none;
+  opacity: 0;
+  animation: revelar var(--lento) var(--curva) forwards;
+  animation-delay: var(--retraso, 0ms);
+  transition: transform var(--medio) var(--curva);
+}
+
+/* Hover: la tarjeta crece de forma marcada y se acerca al usuario,
+   elevándose por encima del resto de la constelación. */
+.nodo:hover,
+.nodo:focus-visible {
+  transform: translate(-50%, -50%) scale(1.22);
+  z-index: 20;
+}
+
+@keyframes revelar {
+  from { opacity: 0; filter: blur(12px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+
+.nodo__marco {
+  position: relative;
+  width: 100%;
+  height: var(--nodo-alto);
+  overflow: hidden;
+  background: var(--gris-humo);
+  box-shadow:
+    0 30px 70px -20px rgba(0, 0, 0, 0.95),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition: box-shadow var(--medio) var(--curva),
+              transform var(--medio) var(--curva);
+}
+
+.nodo__foto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(0.75) brightness(0.62) contrast(1.05);
+  transition: filter var(--medio) var(--curva),
+              transform var(--lento) var(--curva);
+}
+
+/* Halo de luz que se enciende al pasar el cursor */
+.nodo__halo {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(255, 248, 231, 0.28) 0%,
+    rgba(255, 248, 231, 0.06) 45%,
+    transparent 75%
+  );
+  transition: opacity var(--medio) var(--curva);
+  pointer-events: none;
+}
+
+.nodo:hover .nodo__marco,
+.nodo:focus-visible .nodo__marco {
+  transform: translateY(-4px);
+  /* Sombra proyectada más amplia y con más brillo cálido: "resalta". */
+  box-shadow:
+    0 54px 100px -16px rgba(0, 0, 0, 1),
+    0 0 46px -2px rgba(255, 248, 231, 0.34),
+    0 0 0 1px rgba(255, 248, 231, 0.3);
+}
+
+.nodo:hover .nodo__foto,
+.nodo:focus-visible .nodo__foto {
+  filter: grayscale(0.1) brightness(0.98) contrast(1.02);
+  transform: scale(1.05);
+}
+
+.nodo:hover .nodo__halo,
+.nodo:focus-visible .nodo__halo { opacity: 1; }
+
+.nodo:focus-visible { outline: none; }
+
+.nodo__pie {
+  padding-top: 14px;
+  text-align: center;
+  /* Un poco más ancho que el nodo para que los nombres quepan mejor,
+     centrado: (210 - 168) / 2 = 21px de desborde a cada lado. */
+  width: 210px;
+  margin-left: -21px;
+}
+
+.nodo__nombre {
+  font-family: var(--fuente-titulo);
+  font-weight: 400;
+  font-size: 13.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffffff;
+  line-height: 1.45;
+  /* Contraste sobre el fondo oscuro para que se lea nítido. */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 2px 12px rgba(0, 0, 0, 0.8);
+  /* Máximo 2 líneas con recorte, para no invadir vecinos. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.nodo__disciplina {
+  margin-top: 5px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gris-claro);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  transition: color var(--medio) var(--curva);
+}
+
+.nodo:hover .nodo__disciplina { color: var(--luz-ambar); }
+
+/* Marcador de posición cuando el nodo no tiene fotografía */
+.nodo__placeholder {
+  width: 100%;
+  height: var(--nodo-alto);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 46px;
+  letter-spacing: 0.06em;
+  color: var(--gris-tenue);
+  background:
+    radial-gradient(ellipse at 50% 35%, #2a2a2a 0%, #161616 60%, #0d0d0d 100%);
+  transition: color var(--medio) var(--curva);
+}
+
+.nodo:hover .nodo__placeholder,
+.nodo:focus-visible .nodo__placeholder { color: var(--luz-ambar); }
+
+/* ── HUD de zoom ─────────────────────────────────────────────── */
+
+.zoom-hud {
+  position: fixed;
+  bottom: 28px;
+  right: 40px;
+  z-index: 30;
+  font-size: 10px;
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  color: var(--gris-tenue);
+  pointer-events: none;
+}
+
+/* ── Modal de perfil ─────────────────────────────────────────── */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.modal__velo {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  opacity: 0;
+  transition: opacity var(--medio) var(--curva);
+}
+
+.modal.abierto .modal__velo { opacity: 1; }
+
+/* El lienzo se aleja y desenfoca detrás del modal */
+.lienzo.desenfocado {
+  filter: blur(6px) brightness(0.5);
+  transform: scale(1.04);
+  transition: filter var(--medio) var(--curva),
+              transform var(--medio) var(--curva);
+}
+
+.modal__ficha {
+  position: relative;
+  width: min(1020px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  background: linear-gradient(150deg, #151515 0%, #0a0a0a 100%);
+  box-shadow:
+    0 60px 140px -30px rgba(0, 0, 0, 1),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  opacity: 0;
+  transform: translateY(26px) scale(0.97);
+  transition: opacity var(--medio) var(--curva),
+              transform var(--medio) var(--curva);
+}
+
+.modal.abierto .modal__ficha {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.modal__cerrar {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  z-index: 2;
+  font-size: 26px;
+  font-weight: 200;
+  line-height: 1;
+  color: var(--gris-tenue);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: color var(--rapido) var(--curva);
+}
+
+.modal__cerrar:hover { color: var(--blanco-brillo); }
+
+.modal__cuerpo {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 0;
+}
+
+/* Carrusel */
+
+.carrusel {
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.carrusel__marco {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #0d0d0d;
+  box-shadow: 0 40px 80px -24px rgba(0, 0, 0, 1);
+}
+
+.carrusel__foto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity var(--medio) var(--curva);
+}
+
+.carrusel__foto.cambiando { opacity: 0; }
+
+/* Marcador cuando el perfil no tiene fotografías */
+.carrusel__vacio {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 72px;
+  letter-spacing: 0.05em;
+  color: var(--gris-tenue);
+  background: radial-gradient(ellipse at 50% 35%, #232323 0%, #121212 65%, #0a0a0a 100%);
+}
+
+.carrusel__lupa {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+  color: var(--blanco-brillo);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--rapido) var(--curva),
+              background var(--rapido) var(--curva);
+}
+
+.carrusel__marco:hover .carrusel__lupa { opacity: 1; }
+.carrusel__lupa:hover { background: rgba(255, 248, 231, 0.16); }
+
+.carrusel__control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+
+.carrusel__flecha {
+  font-size: 22px;
+  font-weight: 200;
+  line-height: 1;
+  color: var(--gris-tenue);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color var(--rapido) var(--curva);
+}
+
+.carrusel__flecha:hover { color: var(--blanco-brillo); }
+
+.carrusel__puntos { display: flex; gap: 9px; }
+
+.punto {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: background var(--rapido) var(--curva),
+              box-shadow var(--rapido) var(--curva);
+}
+
+.punto.activo {
+  background: var(--luz-calida);
+  box-shadow: 0 0 10px rgba(255, 248, 231, 0.7);
+}
+
+/* Datos del perfil */
+
+.ficha-datos {
+  padding: 52px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.ficha-datos__disciplina {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--luz-ambar);
+}
+
+.ficha-datos__nombre {
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 34px;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  color: var(--blanco-brillo);
+}
+
+.ficha-datos__fechas {
+  font-size: 12px;
+  font-weight: 300;
+  letter-spacing: 0.14em;
+  color: var(--gris-tenue);
+  margin-top: -18px;
+}
+
+.ficha-datos__bloque {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 20px;
+}
+
+.ficha-datos__etiqueta {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gris-tenue);
+  margin-bottom: 10px;
+}
+
+.ficha-datos__texto {
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.85;
+  color: var(--gris-claro);
+}
+
+/* ── CRUD: barra de acciones y editor ────────────────────────── */
+
+.ficha-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.btn-crud {
+  font-family: var(--fuente-texto);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gris-claro);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: color var(--rapido) var(--curva),
+              border-color var(--rapido) var(--curva),
+              background var(--rapido) var(--curva);
+}
+
+.btn-crud:hover {
+  color: var(--blanco-brillo);
+  border-color: rgba(255, 248, 231, 0.4);
+  background: rgba(255, 248, 231, 0.05);
+}
+
+.btn-crud--primario {
+  color: var(--negro-profundo);
+  background: var(--luz-calida);
+  border-color: var(--luz-calida);
+}
+.btn-crud--primario:hover {
+  color: var(--negro-profundo);
+  background: #fff;
+  border-color: #fff;
+}
+
+.btn-crud--peligro {
+  margin-left: auto;
+  color: #d98a8a;
+  border-color: rgba(217, 138, 138, 0.3);
+}
+.btn-crud--peligro:hover {
+  color: #fff;
+  background: rgba(180, 60, 60, 0.35);
+  border-color: rgba(217, 138, 138, 0.6);
+}
+
+/* Formulario de edición */
+.ficha-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ficha-editor__titulo {
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  color: var(--blanco-brillo);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.campo--fotos { gap: 8px; }
+
+.campo__etiqueta {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gris-tenue);
+}
+
+.campo__input {
+  font-family: var(--fuente-texto);
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--blanco-brillo);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  padding: 10px 12px;
+  width: 100%;
+  transition: border-color var(--rapido) var(--curva),
+              background var(--rapido) var(--curva);
+}
+
+.campo__input:focus {
+  outline: none;
+  border-color: rgba(255, 248, 231, 0.5);
+  background: rgba(255, 248, 231, 0.05);
+}
+
+.campo__input::placeholder { color: var(--gris-tenue); }
+
+/* Los date pickers en tema oscuro */
+.campo__input[type='date'] { color-scheme: dark; }
+
+.campo__area {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.campo-fila {
+  display: flex;
+  gap: 14px;
+}
+.campo-fila .campo { flex: 1; }
+
+.ficha-editor__acciones {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* ── Flip Card 3D ────────────────────────────────────────────── */
+
+.flip-capa {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.flip-velo {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  opacity: 0;
+  transition: opacity 0.45s var(--curva);
+}
+
+.flip-capa.abierta .flip-velo { opacity: 1; }
+
+.carta {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: min(940px, 94vw);
+  height: min(88vh, 680px);
+  transform: translate(-50%, -50%) scale(0.28);
+  transform-origin: center center;
+  perspective: 2400px;
+  transition: transform 0.55s var(--curva);
+  will-change: transform;
+}
+
+/* Contenedor que gira en 3D */
+.carta__flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.65s var(--curva);
+}
+
+.flip-capa.abierta .carta__flip { transform: rotateY(180deg); }
+
+.carta__cara {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow:
+    0 50px 110px -28px rgba(0, 0, 0, 1),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Frente: foto + nombre */
+.carta__frente {
+  display: flex;
+  flex-direction: column;
+  background: var(--gris-humo);
+}
+
+.frente__marco {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+.frente__foto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: grayscale(0.6) brightness(0.78) contrast(1.03);
+}
+
+.frente__placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 84px;
+  letter-spacing: 0.05em;
+  color: var(--gris-tenue);
+  background: radial-gradient(ellipse at 50% 35%, #2a2a2a 0%, #141414 70%);
+}
+
+.frente__halo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 248, 231, 0.16), transparent 70%);
+}
+
+.frente__nombre {
+  padding: 16px 14px;
+  text-align: center;
+  font-family: var(--fuente-titulo);
+  font-weight: 300;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blanco-brillo);
+}
+
+/* Reverso: información */
+.carta__reverso {
+  transform: rotateY(180deg);
+  background: linear-gradient(150deg, #151515 0%, #0a0a0a 100%);
+}
+
+.reverso__scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 52px 44px 44px;
+  /* Dos columnas: carrusel grande a la izquierda, datos a la derecha. */
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 36px;
+  align-content: start;
+  /* Scrollbar fino y discreto (Firefox) */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 248, 231, 0.22) transparent;
+  scroll-behavior: smooth;
+}
+
+.mini-carrusel { grid-column: 1; grid-row: 1 / span 2; }
+.ficha-lectura,
+.ficha-editor { grid-column: 2; grid-row: 1; align-self: start; }
+
+/* En tarjetas estrechas (móvil), una sola columna. */
+@media (max-width: 680px) {
+  .reverso__scroll {
+    grid-template-columns: 1fr;
+    padding: 46px 22px 28px;
+    gap: 20px;
+  }
+  .mini-carrusel,
+  .ficha-lectura,
+  .ficha-editor { grid-column: 1; grid-row: auto; }
+}
+
+/* Scrollbar fino y discreto (WebKit/Blink): sin pista, pulgar tenue
+   que se aviva al pasar el cursor. No toca los bordes redondeados. */
+.reverso__scroll::-webkit-scrollbar { width: 6px; }
+.reverso__scroll::-webkit-scrollbar-track { background: transparent; }
+.reverso__scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+.reverso__scroll:hover::-webkit-scrollbar-thumb { background: rgba(255, 248, 231, 0.32); }
+
+/* Desvanecido inferior sutil que insinúa que hay más contenido */
+.carta__reverso::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42px;
+  pointer-events: none;
+  background: linear-gradient(to top, #0b0b0b 0%, rgba(11, 11, 11, 0) 100%);
+  border-radius: 0 0 4px 4px;
+}
+
+.carta__cerrar {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 4;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 200;
+  line-height: 1;
+  color: var(--gris-tenue);
+  background: rgba(10, 10, 10, 0.55);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: color var(--rapido) var(--curva),
+              background var(--rapido) var(--curva);
+}
+
+.carta__cerrar:hover {
+  color: var(--blanco-brillo);
+  background: rgba(255, 248, 231, 0.12);
+}
+
+/* Mini carrusel dentro de la carta */
+.mini-carrusel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mini-carrusel .carrusel__marco {
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #0d0d0d;
+  box-shadow: 0 30px 60px -22px rgba(0, 0, 0, 1);
+}
+
+/* Tipografía dentro de la carta grande */
+.carta .ficha-datos__nombre { font-size: 28px; }
+.carta .ficha-datos__texto { font-size: 14px; line-height: 1.8; }
+.carta .ficha-datos__disciplina { font-size: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .carta__flip { transition: none; }
+}
+
+/* ── Visor a pantalla completa ───────────────────────────────── */
+
+.visor {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.97);
+  opacity: 0;
+  transition: opacity var(--medio) var(--curva);
+}
+
+.visor.abierto { opacity: 1; }
+
+.visor__foto {
+  max-width: 94vw;
+  max-height: 94vh;
+  object-fit: contain;
+  box-shadow: 0 0 120px -20px rgba(255, 248, 231, 0.12);
+  transform: scale(0.96);
+  transition: transform var(--medio) var(--curva);
+}
+
+.visor.abierto .visor__foto { transform: scale(1); }
+
+.visor__cerrar {
+  position: absolute;
+  top: 26px;
+  right: 34px;
+  font-size: 30px;
+  font-weight: 200;
+  line-height: 1;
+  color: var(--gris-tenue);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: color var(--rapido) var(--curva);
+}
+
+.visor__cerrar:hover { color: var(--blanco-brillo); }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .cabecera { padding: 20px 22px; }
+  .modal { padding: 0; }
+  .modal__cuerpo { grid-template-columns: 1fr; }
+  .carrusel { padding: 22px; }
+  .ficha-datos { padding: 32px 26px 44px; }
+  .ficha-datos__nombre { font-size: 26px; }
+  .zoom-hud { right: 22px; bottom: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
