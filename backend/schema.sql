@@ -53,40 +53,24 @@ create index if not exists perfiles_madre_idx    on public.perfiles (id_familia,
 alter table public.perfiles enable row level security;
 
 -- ┌───────────────────────────────────────────────────────────┐
--- │ ITERACIÓN 2 (sin Auth todavía): lectura pública.            │
--- │ Deja ver el álbum a cualquiera con la anon key. Adecuado    │
--- │ para maquetar y demostrar. Sin permiso de escritura.        │
+-- │ CLAVE FAMILIAR (modelo actual): todo el álbum — lectura y   │
+-- │ escritura — exige sesión. La "sesión" es una única cuenta   │
+-- │ compartida de Supabase Auth cuya contraseña es la clave     │
+-- │ familiar que teclea la app (ver js/config.js AUTH_EMAIL).   │
+-- │ Crear la cuenta en: Authentication → Users → Add user       │
+-- │ (email = AUTH_EMAIL, password = la clave, Auto Confirm ✓).  │
 -- └───────────────────────────────────────────────────────────┘
+drop policy if exists "acceso_publico_todo" on public.perfiles;
 drop policy if exists "lectura publica perfiles" on public.perfiles;
-create policy "lectura publica perfiles"
-  on public.perfiles for select
-  to anon, authenticated
-  using (true);
-
--- ┌───────────────────────────────────────────────────────────┐
--- │ ESCRITURA para el CRUD de esta fase (sin Auth todavía).     │
--- │ Permite insertar/editar/borrar con la anon key. Es abierto  │
--- │ a propósito para poder mantener los datos desde la UI;      │
--- │ ⚠️ reemplázalo por las políticas por-usuario de la Iteración │
--- │ 3 (más abajo) en cuanto actives Auth.                       │
--- └───────────────────────────────────────────────────────────┘
 drop policy if exists "escritura publica perfiles" on public.perfiles;
-create policy "escritura publica perfiles"
-  on public.perfiles for insert
-  to anon, authenticated
-  with check (true);
-
 drop policy if exists "edicion publica perfiles" on public.perfiles;
-create policy "edicion publica perfiles"
-  on public.perfiles for update
-  to anon, authenticated
-  using (true) with check (true);
-
 drop policy if exists "borrado publico perfiles" on public.perfiles;
-create policy "borrado publico perfiles"
-  on public.perfiles for delete
-  to anon, authenticated
-  using (true);
+
+drop policy if exists "familia autenticada todo" on public.perfiles;
+create policy "familia autenticada todo"
+  on public.perfiles for all
+  to authenticated
+  using (true) with check (true);
 
 -- ┌───────────────────────────────────────────────────────────┐
 -- │ ITERACIÓN 3 (cuando actives Auth): descomenta lo de abajo   │
@@ -113,9 +97,29 @@ insert into storage.buckets (id, name, public)
 values ('galeria', 'galeria', true)
 on conflict (id) do nothing;
 
--- Lectura pública de las imágenes del bucket (para poder mostrarlas).
+-- Lectura pública de las imágenes del bucket (los <img> no llevan sesión;
+-- las URLs son largas y no adivinables — equilibrio razonable para familia).
 drop policy if exists "galeria lectura publica" on storage.objects;
 create policy "galeria lectura publica"
   on storage.objects for select
   to anon, authenticated
+  using (bucket_id = 'galeria');
+
+-- Solo la familia autenticada puede subir/cambiar/borrar fotos.
+drop policy if exists "galeria subida familiar" on storage.objects;
+create policy "galeria subida familiar"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'galeria');
+
+drop policy if exists "galeria edicion familiar" on storage.objects;
+create policy "galeria edicion familiar"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'galeria') with check (bucket_id = 'galeria');
+
+drop policy if exists "galeria borrado familiar" on storage.objects;
+create policy "galeria borrado familiar"
+  on storage.objects for delete
+  to authenticated
   using (bucket_id = 'galeria');

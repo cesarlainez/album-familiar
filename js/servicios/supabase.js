@@ -24,6 +24,45 @@
   }
 
   const SupabaseServicio = {
+    /* ── Clave familiar (Supabase Auth con una cuenta compartida) ──
+       El mismo cliente lleva la sesión: tras entrar, TODAS las consultas
+       de datos y subidas de fotos viajan autenticadas. */
+
+    /** Sesión activa en este dispositivo, o null. */
+    async sesion() {
+      const { data } = await cliente().auth.getSession();
+      return data.session || null;
+    },
+
+    /** Inicia sesión con la clave familiar. Lanza si es incorrecta. */
+    async entrarConClave(clave) {
+      const cfg = global.ALBUM_CONFIG;
+      const { data, error } = await cliente().auth.signInWithPassword({
+        email: cfg.AUTH_EMAIL,
+        password: clave,
+      });
+      if (error) throw error;
+      return data.session;
+    },
+
+    /** Cierra la sesión en este dispositivo. */
+    async salir() {
+      await cliente().auth.signOut();
+    },
+
+    /* ── Fotografías (Storage) ─────────────────────────────── */
+
+    /** Sube una imagen al bucket `galeria` y devuelve su URL pública.
+     *  `ruta` debe ser única (p. ej. familia/persona/slot-timestamp.jpg). */
+    async subirFoto(ruta, blob) {
+      const { error } = await cliente()
+        .storage.from('galeria')
+        .upload(ruta, blob, { contentType: 'image/jpeg', upsert: true });
+      if (error) throw error;
+      const { data } = cliente().storage.from('galeria').getPublicUrl(ruta);
+      return data.publicUrl;
+    },
+
     /** Trae los perfiles del tenant. El filtrado por id_familia se refuerza
      *  en el servidor con RLS: aunque alguien manipule esta consulta, la
      *  política solo devuelve filas de su propia familia. */
