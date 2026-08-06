@@ -38,8 +38,29 @@
         <datalist id="familias"></datalist>
       </div>
       <button class="btn-fantasma" id="btnCentrar" title="Centrar la constelación (tecla C)">Centrar</button>
+      <button class="btn-fantasma" id="btnSalir" title="Cerrar sesión en este dispositivo" hidden>Salir</button>
     </nav>
   </header>
+
+  <!-- ═══ Candado: clave familiar (Supabase Auth compartida) ═══ -->
+  <div class="candado" id="candado" hidden>
+    <div class="candado__caja">
+      <p class="candado__titulo">Álbum Familiar</p>
+      <p class="candado__nota">Este álbum es privado. Ingresa la clave familiar.</p>
+      <form class="candado__form" id="candadoForm">
+        <input
+          class="campo__input candado__input"
+          id="candadoClave"
+          type="password"
+          placeholder="Clave familiar"
+          autocomplete="current-password"
+          aria-label="Clave familiar"
+        />
+        <button class="btn-crud btn-crud--primario" type="submit">Entrar</button>
+      </form>
+      <p class="candado__error" id="candadoError" hidden>Clave incorrecta. Intenta de nuevo.</p>
+    </div>
+  </div>
 
   <!-- ═══ Aviso de persistencia (p. ej. abierto por file://) ═══ -->
   <div class="aviso" id="avisoPersistencia" hidden></div>
@@ -188,10 +209,21 @@
               </label>
 
               <fieldset class="campo campo--fotos">
-                <span class="campo__etiqueta">Fotografías (URL, hasta 3)</span>
-                <input class="campo__input" id="editFoto1" type="url" placeholder="https://…" />
-                <input class="campo__input" id="editFoto2" type="url" placeholder="https://…" />
-                <input class="campo__input" id="editFoto3" type="url" placeholder="https://…" />
+                <span class="campo__etiqueta">Fotografías (hasta 3)</span>
+                <div class="foto-fila">
+                  <input class="campo__input" id="editFoto1" type="url" placeholder="https://… o sube un archivo" />
+                  <button class="btn-crud btn-subir" type="button" data-subir="1" title="Subir foto desde tu equipo">Subir</button>
+                </div>
+                <div class="foto-fila">
+                  <input class="campo__input" id="editFoto2" type="url" placeholder="https://… o sube un archivo" />
+                  <button class="btn-crud btn-subir" type="button" data-subir="2" title="Subir foto desde tu equipo">Subir</button>
+                </div>
+                <div class="foto-fila">
+                  <input class="campo__input" id="editFoto3" type="url" placeholder="https://… o sube un archivo" />
+                  <button class="btn-crud btn-subir" type="button" data-subir="3" title="Subir foto desde tu equipo">Subir</button>
+                </div>
+                <!-- Selector de archivo oculto, compartido por los 3 botones -->
+                <input id="archivoFoto" type="file" accept="image/*" hidden />
               </fieldset>
 
               <div class="ficha-editor__acciones">
@@ -216,12 +248,12 @@
   <!-- SDK de Supabase (UMD): expone window.supabase. Sin build step. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <script src="js/config.js?v=7"></script>
-  <script src="js/servicios/supabase.js?v=7"></script>
-  <script src="js/datos.js?v=7"></script>
-  <script src="js/lienzo.js?v=7"></script>
-  <script src="js/perfil.js?v=7"></script>
-  <script src="js/mantenimiento.js?v=7"></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="js/config.js?v=8"></script>
+  <script src="js/servicios/supabase.js?v=8"></script>
+  <script src="js/datos.js?v=8"></script>
+  <script src="js/lienzo.js?v=8"></script>
+  <script src="js/perfil.js?v=8"></script>
+  <script src="js/mantenimiento.js?v=8"></script>
+  <script src="js/app.js?v=8"></script>
 </body>
 </html>

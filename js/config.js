@@ -24,6 +24,15 @@ window.ALBUM_CONFIG = {
 
   /* Tenant por defecto. Al añadir Auth, saldrá del JWT del usuario. */
   TENANT_POR_DEFECTO: 'Familia_Lainez',
+
+  /* ── Clave familiar ─────────────────────────────────────────
+     El álbum se protege con UNA clave compartida por la familia:
+     por debajo es una cuenta de Supabase Auth cuyo "email" es este
+     identificador interno (no es un correo real, nadie escribe ahí)
+     y cuya contraseña es la clave que la familia teclea.
+     La sesión se recuerda por dispositivo (localStorage). */
+  PROTEGER_CON_CLAVE: true,
+  AUTH_EMAIL: 'cesarlainez@hotmail.com',
 };
 
 /* ¿Hay credenciales reales o seguimos en modo local? */

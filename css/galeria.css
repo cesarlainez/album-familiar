@@ -216,6 +216,80 @@ body {
 
 .aviso strong { color: #fff; font-weight: 500; }
 
+/* ── Candado: clave familiar ─────────────────────────────────── */
+
+.candado {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 40%, #1c1c1c 0%, var(--gris-carbon) 45%, var(--negro-profundo) 90%);
+}
+
+.candado__caja {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(340px, 88vw);
+  text-align: center;
+}
+
+.candado__titulo {
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 18px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--blanco-brillo);
+}
+
+.candado__nota {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--gris-tenue);
+  margin-bottom: 8px;
+}
+
+.candado__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.candado__input {
+  text-align: center;
+  letter-spacing: 0.3em;
+}
+
+.candado__error {
+  font-size: 11px;
+  color: #d98a8a;
+  letter-spacing: 0.06em;
+}
+
+/* ── Editor: filas de fotografía con botón de subida ─────────── */
+
+.foto-fila {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.foto-fila .campo__input { flex: 1; min-width: 0; }
+
+.btn-subir {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.btn-subir.subiendo {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 /* ── Toast (notificación breve) ──────────────────────────────── */
 
 .toast {

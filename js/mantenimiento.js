@@ -35,6 +35,7 @@
       foto2: $('editFoto2'),
       foto3: $('editFoto3'),
       cancelar: $('editCancelar'),
+      archivoFoto: $('archivoFoto'),
     };
 
     /* Al abrir cualquier perfil, volver siempre a modo lectura. */
@@ -156,6 +157,66 @@
     global.alert(mensaje + (e && e.message ? ': ' + e.message : '.'));
   };
 
+  /* ── Subida de fotografías ───────────────────────────────── */
+
+  /** Redimensiona la imagen en el navegador (máx. 1600 px, JPEG 0.85):
+   *  las fotos de celular pesan 5–10 MB y no tiene sentido subirlas así. */
+  Mantenimiento.prototype._redimensionar = function (archivo) {
+    return new Promise((resolver, rechazar) => {
+      const url = URL.createObjectURL(archivo);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const MAX = 1600;
+        const factor = Math.min(1, MAX / Math.max(img.width, img.height));
+        const w = Math.round(img.width * factor);
+        const h = Math.round(img.height * factor);
+        const lienzo = document.createElement('canvas');
+        lienzo.width = w;
+        lienzo.height = h;
+        lienzo.getContext('2d').drawImage(img, 0, 0, w, h);
+        lienzo.toBlob(
+          (blob) => (blob ? resolver(blob) : rechazar(new Error('No se pudo procesar la imagen'))),
+          'image/jpeg',
+          0.85
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        rechazar(new Error('El archivo no es una imagen válida'));
+      };
+      img.src = url;
+    });
+  };
+
+  /** Abre el selector de archivo para el slot indicado (1–3), sube la
+   *  imagen al Storage y deja la URL pública en el input correspondiente. */
+  Mantenimiento.prototype._subirFoto = function (slot, boton) {
+    const selector = this.refs.archivoFoto;
+    selector.value = ''; // permite volver a elegir el mismo archivo
+    selector.onchange = async () => {
+      const archivo = selector.files && selector.files[0];
+      if (!archivo) return;
+      const p = this.perfil.perfilActual;
+      if (!p) return;
+      boton.classList.add('subiendo');
+      boton.textContent = 'Subiendo…';
+      try {
+        const blob = await this._redimensionar(archivo);
+        const ruta = `${p.id_familia}/${p.id}/foto-${slot}-${Date.now()}.jpg`;
+        const url = await SupabaseServicio.subirFoto(ruta, blob);
+        this.refs['foto' + slot].value = url;
+        this.toast('Foto subida');
+      } catch (e) {
+        this._error('No se pudo subir la foto', e);
+      } finally {
+        boton.classList.remove('subiendo');
+        boton.textContent = 'Subir';
+      }
+    };
+    selector.click();
+  };
+
   /* ── Cableado de la UI ───────────────────────────────────── */
 
   Mantenimiento.prototype._conectar = function () {
@@ -173,6 +234,17 @@
       this.guardar();
     });
     this.refs.cancelar.addEventListener('click', () => this.modoLectura());
+
+    /* Botones "Subir" de los 3 slots de foto. Sin backend no hay Storage:
+       se ocultan y quedan solo los campos de URL. */
+    const cfg = global.ALBUM_CONFIG || {};
+    this.refs.editor.querySelectorAll('[data-subir]').forEach((btn) => {
+      if (!cfg.hayBackend) {
+        btn.hidden = true;
+        return;
+      }
+      btn.addEventListener('click', () => this._subirFoto(btn.dataset.subir, btn));
+    });
   };
 
   global.Mantenimiento = Mantenimiento;

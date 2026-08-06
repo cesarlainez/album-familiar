@@ -132,7 +132,48 @@
       aviso.hidden = false;
     }
 
-    await recargar();
-    await rellenarFamilias();
+    const cargarAlbum = async () => {
+      await recargar();
+      await rellenarFamilias();
+    };
+
+    /* ── Candado: clave familiar ────────────────────────────────
+       Con backend + protección activa, el álbum no se carga hasta
+       entrar con la clave. La sesión queda recordada por dispositivo,
+       así que solo se pide la primera vez. */
+    if (cfg.hayBackend && cfg.PROTEGER_CON_CLAVE) {
+      $('candadoForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const boton = e.target.querySelector('button[type="submit"]');
+        boton.disabled = true;
+        try {
+          await SupabaseServicio.entrarConClave($('candadoClave').value);
+          $('candadoError').hidden = true;
+          $('candado').hidden = true;
+          $('btnSalir').hidden = false;
+          await cargarAlbum();
+        } catch (err) {
+          $('candadoError').hidden = false;
+          $('candadoClave').select();
+        } finally {
+          boton.disabled = false;
+        }
+      });
+
+      $('btnSalir').addEventListener('click', async () => {
+        await SupabaseServicio.salir();
+        location.reload();
+      });
+
+      const sesion = await SupabaseServicio.sesion();
+      if (!sesion) {
+        $('candado').hidden = false;
+        $('candadoClave').focus();
+        return; // el álbum se cargará al entrar con la clave
+      }
+      $('btnSalir').hidden = false;
+    }
+
+    await cargarAlbum();
   });
 })(window);
