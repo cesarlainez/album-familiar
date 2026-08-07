@@ -459,7 +459,7 @@
          precisos (5px); con el dedo SIEMPRE hay temblor de 5–15px, así que
          un umbral de mouse hacía que muchos toques legítimos no abrieran
          la ficha. 16px ≈ el "touch slop" estándar de las plataformas. */
-      const umbral = e.pointerType === 'mouse' ? 5 : 16;
+      const umbral = e.pointerType === 'mouse' ? 5 : 22;
       if (Math.hypot(e.clientX - g.x, e.clientY - g.y) >= umbral) return;
       const perfil = this.perfiles.find((p) => p.id === g.nodo.dataset.id);
       if (perfil) this.alSeleccionar(perfil);

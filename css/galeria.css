@@ -158,6 +158,28 @@ body {
   background: rgba(255, 248, 231, 0.05);
 }
 
+/* ── Menú de descarga (PNG / PDF) ────────────────────────────── */
+
+.descargar { position: relative; }
+
+.descargar__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: linear-gradient(150deg, #181818 0%, #0c0c0c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 1);
+  min-width: 185px;
+}
+
+.descargar__menu .btn-crud { width: 100%; text-align: center; }
+
 /* ── Estado vacío del lienzo ─────────────────────────────────── */
 
 .lienzo-vacio {
@@ -774,26 +796,26 @@ body:not(.modo-edicion) .btn-subir {
 }
 
 .carrusel__flecha {
-  font-size: 22px;
-  font-weight: 200;
+  font-size: 30px;
+  font-weight: 300;
   line-height: 1;
-  color: var(--gris-tenue);
+  color: var(--gris-claro);
   background: transparent;
   border: 0;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 6px 16px; /* área táctil generosa */
   transition: color var(--rapido) var(--curva);
 }
 
 .carrusel__flecha:hover { color: var(--blanco-brillo); }
 
-.carrusel__puntos { display: flex; gap: 9px; }
+.carrusel__puntos { display: flex; gap: 11px; }
 
 .punto {
-  width: 5px;
-  height: 5px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.28);
   border: 0;
   padding: 0;
   cursor: pointer;
@@ -1021,6 +1043,11 @@ select.campo__input option {
   inset: 0;
   z-index: 50;
 }
+
+/* Mientras se cierra (animación de salida), el velo NO debe seguir
+   capturando toques: si no, el siguiente toque sobre una foto se lo
+   "come" el velo invisible y el usuario debe tocar dos veces. */
+.flip-capa:not(.abierta) { pointer-events: none; }
 
 .flip-velo {
   position: absolute;

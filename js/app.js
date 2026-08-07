@@ -48,6 +48,7 @@
       obra: $('modalObra'),
       bio: $('modalBio'),
       foto: $('carruselFoto'),
+      marco: $('carruselMarco'),
       vacio: $('carruselVacio'),
       puntos: $('carruselPuntos'),
       prev: $('fotoPrev'),
@@ -74,6 +75,31 @@
     });
 
     $('btnCentrar').addEventListener('click', () => lienzo.centrar());
+
+    /* ── Descargar el árbol (PNG / PDF) ─────────────────────── */
+    const menuDescargar = $('descargarMenu');
+    $('btnDescargar').addEventListener('click', (e) => {
+      e.stopPropagation();
+      menuDescargar.hidden = !menuDescargar.hidden;
+    });
+    document.addEventListener('click', (e) => {
+      if (!menuDescargar.hidden && !e.target.closest('.descargar')) menuDescargar.hidden = true;
+    });
+
+    const exportarArbol = async (formato) => {
+      menuDescargar.hidden = true;
+      toast(formato === 'png' ? 'Generando imagen…' : 'Generando PDF…');
+      try {
+        if (formato === 'png') await AlbumExportar.png(ultimosPerfiles, etiquetaTenant(familiaActual));
+        else await AlbumExportar.pdf(ultimosPerfiles, etiquetaTenant(familiaActual));
+        toast('Descarga lista');
+      } catch (err) {
+        console.error('[Exportar]', err);
+        global.alert('No se pudo generar la descarga: ' + err.message);
+      }
+    };
+    $('descargarPNG').addEventListener('click', () => exportarArbol('png'));
+    $('descargarPDF').addEventListener('click', () => exportarArbol('pdf'));
 
     /* Relee la familia activa y redibuja. Alterna el estado vacío.
        Devuelve los perfiles frescos para localizar nodos nuevos/editados. */

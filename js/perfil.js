@@ -31,6 +31,7 @@
 
   Perfil.prototype.abrir = function (perfil) {
     clearTimeout(this._cerrarTimer);
+    this._abiertaEn = Date.now();
     this.perfilActual = perfil;
     this._pintarFrente(perfil);
     this._pintarLectura(perfil);
@@ -206,16 +207,52 @@
     const r = this.refs;
 
     r.capa.querySelectorAll('[data-cerrar]').forEach((el) =>
-      el.addEventListener('click', () => this.cerrar())
+      el.addEventListener('click', () => {
+        /* Ignora el "clic fantasma" que algunos navegadores móviles
+           sintetizan justo después del toque que abrió la ficha. */
+        if (Date.now() - (this._abiertaEn || 0) < 450) return;
+        this.cerrar();
+      })
     );
 
     r.prev.addEventListener('click', () => this.irA(this.indice - 1));
     r.next.addEventListener('click', () => this.irA(this.indice + 1));
     r.lupa.addEventListener('click', () => this.abrirVisor());
-    r.foto.addEventListener('click', () => this.abrirVisor());
+    r.foto.addEventListener('click', () => {
+      if (Date.now() - (this._swipeEn || 0) < 400) return; // fue un deslizamiento
+      this.abrirVisor();
+    });
     r.visorCerrar.addEventListener('click', () => this.cerrarVisor());
     r.visor.addEventListener('click', (e) => {
+      if (Date.now() - (this._swipeEn || 0) < 400) return;
       if (e.target === r.visor) this.cerrarVisor();
+    });
+
+    /* ── Deslizar (swipe) para cambiar de foto en táctil ─────────
+       Horizontal, ≥40px y más horizontal que vertical. Funciona en el
+       carrusel de la ficha y en el visor a pantalla completa. */
+    const conectarSwipe = (superficie, alDeslizar) => {
+      let inicio = null;
+      superficie.addEventListener('pointerdown', (e) => {
+        inicio = { x: e.clientX, y: e.clientY };
+      });
+      superficie.addEventListener('pointerup', (e) => {
+        if (!inicio) return;
+        const dx = e.clientX - inicio.x;
+        const dy = e.clientY - inicio.y;
+        inicio = null;
+        if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+          this._swipeEn = Date.now();
+          alDeslizar(dx < 0 ? 1 : -1);
+        }
+      });
+      superficie.addEventListener('pointercancel', () => { inicio = null; });
+    };
+
+    if (r.marco) conectarSwipe(r.marco, (dir) => this.irA(this.indice + dir));
+    conectarSwipe(r.visor, (dir) => {
+      this.irA(this.indice + dir);
+      this.abrirVisor(); // refresca la foto grande
     });
 
     window.addEventListener('keydown', (e) => {
