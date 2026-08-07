@@ -462,6 +462,46 @@
         }
       }
 
+      /* ── GARANTÍA ANTICOLISIÓN ────────────────────────────────
+         La repulsión es "blanda" y con muchas personas puede ceder:
+         esta pasada final separa CUALQUIER par de tarjetas encimadas
+         (rectángulos de tarjeta + nombre) empujándolas por el eje de
+         menor solape. Las parejas rígidas se mueven como bloque. Se
+         itera hasta que ninguna tarjeta queda sobre otra. */
+      const SEP_W = 235; // 168 de tarjeta + etiqueta de 210 + aire
+      const SEP_H = 345; // 228 de foto + pie de texto + aire
+      const compa = new Array(N).fill(-1);
+      for (const [a, b] of rigidos) { compa[a] = b; compa[b] = a; }
+      const empujar = (i, dx, dy) => {
+        px[i] += dx; py[i] += dy;
+        const c = compa[i];
+        if (c >= 0) { px[c] += dx; py[c] += dy; }
+      };
+      for (let pase = 0; pase < 80; pase++) {
+        let solapo = false;
+        for (let i = 0; i < N; i++) {
+          for (let j = i + 1; j < N; j++) {
+            if (compa[i] === j) continue; // la pareja guarda su propia distancia
+            const dx = px[j] - px[i];
+            const dy = py[j] - py[i];
+            const ox = SEP_W - Math.abs(dx);
+            const oy = SEP_H - Math.abs(dy);
+            if (ox <= 0 || oy <= 0) continue;
+            solapo = true;
+            if (ox < oy) {
+              const s = dx > 0 ? 1 : dx < 0 ? -1 : 1;
+              empujar(i, (-s * ox) / 2, 0);
+              empujar(j, (s * ox) / 2, 0);
+            } else {
+              const s = dy > 0 ? 1 : dy < 0 ? -1 : 1;
+              empujar(i, 0, (-s * oy) / 2);
+              empujar(j, 0, (s * oy) / 2);
+            }
+          }
+        }
+        if (!solapo) break;
+      }
+
       perfiles.forEach((p, i) => pos.set(p.id, { x: px[i], y: py[i] }));
       _posiciones = pos;
       return pos;
