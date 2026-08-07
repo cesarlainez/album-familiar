@@ -90,8 +90,9 @@
       menuDescargar.hidden = true;
       toast(formato === 'png' ? 'Generando imagen…' : 'Generando PDF…');
       try {
-        if (formato === 'png') await AlbumExportar.png(ultimosPerfiles, etiquetaTenant(familiaActual));
-        else await AlbumExportar.pdf(ultimosPerfiles, etiquetaTenant(familiaActual));
+        /* exporta lo que está en el lienzo: árbol completo o la rama activa */
+        if (formato === 'png') await AlbumExportar.png(perfilesDibujados, etiquetaTenant(familiaActual));
+        else await AlbumExportar.pdf(perfilesDibujados, etiquetaTenant(familiaActual));
         toast('Descarga lista');
       } catch (err) {
         console.error('[Exportar]', err);
@@ -101,15 +102,52 @@
     $('descargarPNG').addEventListener('click', () => exportarArbol('png'));
     $('descargarPDF').addEventListener('click', () => exportarArbol('pdf'));
 
+    /* ── Filtro de rama: ver solo la línea de una persona ────── */
+    $('btnVerRama').addEventListener('click', async () => {
+      const p = perfil.perfilActual;
+      if (!p) return;
+      ramaDe = p.id;
+      $('chipRamaTexto').textContent = 'Rama de ' + p.nombre_completo;
+      $('chipRama').hidden = false;
+      perfil.cerrar();
+      await recargar();
+      toast('Mostrando solo su rama');
+    });
+
+    $('chipRamaQuitar').addEventListener('click', async () => {
+      ramaDe = null;
+      $('chipRama').hidden = true;
+      await recargar();
+      toast('Árbol completo');
+    });
+
     /* Relee la familia activa y redibuja. Alterna el estado vacío.
-       Devuelve los perfiles frescos para localizar nodos nuevos/editados. */
-    let ultimosPerfiles = [];
+       Devuelve los perfiles frescos para localizar nodos nuevos/editados.
+       Si hay una rama activa, dibuja solo esa rama (el CRUD y los
+       selectores siguen viendo a toda la familia). */
+    let ultimosPerfiles = []; // toda la familia (para CRUD y selectores)
+    let perfilesDibujados = []; // lo que está en el lienzo (para exportar)
+    let ramaDe = null; // id de la persona cuya rama se está viendo
+
     const recargar = async (opciones) => {
-      const perfiles = await AlbumDatos.obtenerPerfiles(familiaActual);
-      ultimosPerfiles = perfiles;
-      lienzo.dibujar(perfiles, opciones);
-      $('lienzoVacio').hidden = perfiles.length !== 0;
-      return perfiles;
+      const todos = await AlbumDatos.obtenerPerfiles(familiaActual);
+      ultimosPerfiles = todos;
+
+      let lista = todos;
+      if (ramaDe) {
+        const ids = AlbumDatos.calcularRama(todos, ramaDe);
+        lista = todos.filter((p) => ids.has(p.id));
+        if (lista.length <= 1) {
+          /* la persona ya no existe o quedó sola: volver al árbol completo */
+          ramaDe = null;
+          lista = todos;
+          $('chipRama').hidden = true;
+        }
+      }
+      perfilesDibujados = lista;
+      lienzo.dibujar(lista, opciones);
+      $('lienzoVacio').hidden = lista.length !== 0;
+      return todos;
     };
 
     const mantenimiento = new Mantenimiento({

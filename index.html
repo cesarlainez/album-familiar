@@ -121,6 +121,12 @@
   <!-- ═══ Indicador de zoom ═══ -->
   <div class="zoom-hud" id="zoomHud" aria-hidden="true">100%</div>
 
+  <!-- ═══ Chip de rama activa ═══ -->
+  <div class="chip-rama" id="chipRama" hidden>
+    <span id="chipRamaTexto"></span>
+    <button id="chipRamaQuitar" aria-label="Ver el árbol completo" title="Ver el árbol completo">&times;</button>
+  </div>
+
   <!-- ═══ Flip Card 3D del perfil ═══ -->
   <div class="flip-capa" id="flipCapa" hidden>
     <div class="flip-velo" id="flipVelo" data-cerrar></div>
@@ -171,6 +177,11 @@
               <div class="ficha-datos__bloque">
                 <h3 class="ficha-datos__etiqueta">Biografía</h3>
                 <p class="ficha-datos__texto" id="modalBio"></p>
+              </div>
+
+              <!-- Filtro de rama: visible también en modo lectura -->
+              <div class="ficha-rama">
+                <button class="btn-crud" id="btnVerRama" type="button">Ver solo su rama</button>
               </div>
 
               <!-- Barra de acciones CRUD -->
@@ -275,13 +286,13 @@
   <!-- SDK de Supabase (UMD): expone window.supabase. Sin build step. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <script src="js/config.js?v=14"></script>
-  <script src="js/servicios/supabase.js?v=14"></script>
-  <script src="js/datos.js?v=14"></script>
-  <script src="js/lienzo.js?v=14"></script>
-  <script src="js/perfil.js?v=14"></script>
-  <script src="js/mantenimiento.js?v=14"></script>
-  <script src="js/exportar.js?v=14"></script>
-  <script src="js/app.js?v=14"></script>
+  <script src="js/config.js?v=15"></script>
+  <script src="js/servicios/supabase.js?v=15"></script>
+  <script src="js/datos.js?v=15"></script>
+  <script src="js/lienzo.js?v=15"></script>
+  <script src="js/perfil.js?v=15"></script>
+  <script src="js/mantenimiento.js?v=15"></script>
+  <script src="js/exportar.js?v=15"></script>
+  <script src="js/app.js?v=15"></script>
 </body>
 </html>

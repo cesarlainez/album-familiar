@@ -522,6 +522,55 @@
       return bloques;
     },
 
+    /** La "rama" de una persona: su línea directa hacia arriba (ancestros),
+     *  su descendencia completa hacia abajo, y las parejas de todos ellos.
+     *  NO incluye hermanos de los ancestros (tíos) ni la familia política
+     *  de las parejas: es el hilo propio de esa persona. */
+    calcularRama(perfiles, id) {
+      const porId = new Map(perfiles.map((p) => [p.id, p]));
+      const ids = new Set();
+      if (!porId.has(id)) return ids;
+      ids.add(id);
+
+      /* ancestros: subir por id_padre / id_madre */
+      const porSubir = [id];
+      while (porSubir.length) {
+        const p = porId.get(porSubir.pop());
+        if (!p) continue;
+        for (const prog of [p.id_padre, p.id_madre]) {
+          if (prog && porId.has(prog) && !ids.has(prog)) {
+            ids.add(prog);
+            porSubir.push(prog);
+          }
+        }
+      }
+
+      /* descendientes: SOLO desde la persona hacia abajo (no de los
+         ancestros, para no arrastrar tíos y primos) */
+      const desc = new Set([id]);
+      let cambio = true;
+      while (cambio) {
+        cambio = false;
+        for (const p of perfiles) {
+          if (desc.has(p.id)) continue;
+          if ((p.id_padre && desc.has(p.id_padre)) || (p.id_madre && desc.has(p.id_madre))) {
+            desc.add(p.id);
+            cambio = true;
+          }
+        }
+      }
+      desc.forEach((d) => ids.add(d));
+
+      /* parejas de cada miembro (para que las parejas se vean junto a ellos) */
+      for (const mid of [...ids]) {
+        const p = porId.get(mid);
+        if (p && Array.isArray(p.id_pareja)) {
+          for (const q of p.id_pareja) if (porId.has(q)) ids.add(q);
+        }
+      }
+      return ids;
+    },
+
     /** Relaciones a dibujar:
      *  · parejas     — lazo romántico (id_pareja): línea punteada + nudo.
      *  · filiaciones — descendencia:
