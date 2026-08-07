@@ -16,9 +16,18 @@
 (function (global) {
   'use strict';
 
-  const ESCALA_MIN = 0.25;
+  const ESCALA_MIN = 0.25; // piso de zoom en escritorio
+  const ESCALA_MIN_MOVIL = 0.35; // en táctil no tiene sentido alejarse más
   const ESCALA_MAX = 3.0;
   const SENSIBILIDAD_RUEDA = 0.0016;
+
+  /* Móvil: umbral de ancho de viewport y zoom de arranque legible.
+     A 0.7, una tarjeta de 168px ocupa ~118px de pantalla: se ve la foto
+     y se lee el nombre; el usuario navega con gestos en vez de ver todo
+     el árbol en miniatura. */
+  const UMBRAL_MOVIL = 768;
+  const ESCALA_ARRANQUE_MOVIL = 0.7;
+
 
   /* Desfase del SVG de hilos respecto al origen del mundo (ver .hilos en CSS) */
   const SVG_OFFSET = 5000;
@@ -41,6 +50,7 @@
     this.perfiles = [];
     this.relaciones = { parejas: [], filiaciones: [] };
     this.elementosNodo = new Map();
+    this._bbox = null; // caja del contenido en coords de mundo (se cachea al dibujar)
 
     this._arrastre = null;
     this._gesto = null;
@@ -59,12 +69,37 @@
     /* Deriva las posiciones de las relaciones (padre/madre/pareja) de los datos.
        Cualquier perfil nuevo en la BD se coloca solo, sin tocar código. */
     AlbumDatos.calcularDisposicion(perfiles);
+    this._bbox = this._calcularBBox();
     this._dibujarNodos();
     this._dibujarConexiones();
     /* recentrar por defecto; tras un cambio del CRUD se conserva la vista
        actual para no desorientar al usuario. */
     if (op.recentrar === false) this._aplicar();
     else this.centrar(false);
+  };
+
+  /** Caja envolvente del contenido (coords de mundo), incluyendo el tamaño
+   *  de las tarjetas y su pie de texto. null si no hay perfiles. */
+  Lienzo.prototype._calcularBBox = function () {
+    if (!this.perfiles.length) return null;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of this.perfiles) {
+      const { x, y } = AlbumDatos.posicionDe(p.id);
+      minX = Math.min(minX, x - NODO_ANCHO / 2);
+      maxX = Math.max(maxX, x + NODO_ANCHO / 2);
+      minY = Math.min(minY, y - NODO_ALTO / 2);
+      maxY = Math.max(maxY, y + NODO_ALTO / 2 + 60); /* +60: el pie de texto */
+    }
+    return { minX, maxX, minY, maxY };
+  };
+
+  Lienzo.prototype._esMovil = function () {
+    /* Inclusivo: 768 (tablet vertical) también arranca legible. */
+    return this.contenedor.getBoundingClientRect().width <= UMBRAL_MOVIL;
+  };
+
+  Lienzo.prototype._escalaMinima = function () {
+    return this._esMovil() ? ESCALA_MIN_MOVIL : ESCALA_MIN;
   };
 
   Lienzo.prototype._dibujarNodos = function () {
@@ -217,14 +252,69 @@
   /* ── Transform ───────────────────────────────────────────── */
 
   Lienzo.prototype._aplicar = function () {
+    this._limitarPan();
     const { x, y } = this.desplazamiento;
     this.mundo.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${this.escala})`;
     if (this.hud) this.hud.textContent = Math.round(this.escala * 100) + '%';
   };
 
+  /** Acota el desplazamiento: el CENTRO del viewport nunca sale del área
+   *  del árbol. Así es imposible "perderlo" arrastrando — siempre estás
+   *  mirando hacia la constelación. Único punto de control: todo pan/zoom
+   *  pasa por _aplicar(). */
+  Lienzo.prototype._limitarPan = function () {
+    const b = this._bbox;
+    if (!b) return;
+    const r = this.contenedor.getBoundingClientRect();
+    const s = this.escala;
+
+    /* punto del mundo bajo el centro de la pantalla: w = (centro - d) / s
+       exigimos  minX ≤ w ≤ maxX  →  despejando d: */
+    const dxA = r.width / 2 - b.maxX * s;
+    const dxB = r.width / 2 - b.minX * s;
+    const dyA = r.height / 2 - b.maxY * s;
+    const dyB = r.height / 2 - b.minY * s;
+
+    this.desplazamiento.x = Math.min(Math.max(this.desplazamiento.x, Math.min(dxA, dxB)), Math.max(dxA, dxB));
+    this.desplazamiento.y = Math.min(Math.max(this.desplazamiento.y, Math.min(dyA, dyB)), Math.max(dyA, dyB));
+  };
+
+  /** Red de seguridad al terminar un gesto: si la vista quedó sobre una zona
+   *  vacía (las esquinas del área del árbol pueden no tener nodos), vuelve
+   *  con una animación breve hasta el nodo más cercano. */
+  Lienzo.prototype._asegurarContenidoVisible = function () {
+    if (!this.perfiles.length) return;
+    const r = this.contenedor.getBoundingClientRect();
+    const cx = r.width / 2;
+    const cy = r.height / 2;
+
+    let mejor = null;
+    let mejorDist = Infinity;
+    for (const p of this.perfiles) {
+      const pos = AlbumDatos.posicionDe(p.id);
+      const sx = pos.x * this.escala + this.desplazamiento.x;
+      const sy = pos.y * this.escala + this.desplazamiento.y;
+      if (sx > -40 && sx < r.width + 40 && sy > -40 && sy < r.height + 40) {
+        return; // hay al menos un nodo a la vista: nada que hacer
+      }
+      const d = (sx - cx) * (sx - cx) + (sy - cy) * (sy - cy);
+      if (d < mejorDist) {
+        mejorDist = d;
+        mejor = pos;
+      }
+    }
+    if (!mejor) return;
+
+    this.mundo.style.transition = 'transform 350ms cubic-bezier(0.22,1,0.36,1)';
+    this.desplazamiento.x = cx - mejor.x * this.escala;
+    this.desplazamiento.y = cy - mejor.y * this.escala;
+    this._aplicar();
+    setTimeout(() => { this.mundo.style.transition = 'none'; }, 380);
+  };
+
   /** Zoom manteniendo fijo el punto de pantalla indicado (por defecto, el centro). */
   Lienzo.prototype.zoomEn = function (nuevaEscala, puntoPantalla) {
-    const escala = Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, nuevaEscala));
+    const escala = Math.min(ESCALA_MAX, Math.max(this._escalaMinima(), nuevaEscala));
     const r = this.contenedor.getBoundingClientRect();
     const px = puntoPantalla ? puntoPantalla.x - r.left : r.width / 2;
     const py = puntoPantalla ? puntoPantalla.y - r.top : r.height / 2;
@@ -250,20 +340,18 @@
       return;
     }
 
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const p of this.perfiles) {
-      const { x, y } = AlbumDatos.posicionDe(p.id);
-      minX = Math.min(minX, x - NODO_ANCHO / 2);
-      maxX = Math.max(maxX, x + NODO_ANCHO / 2);
-      minY = Math.min(minY, y - NODO_ALTO / 2);
-      maxY = Math.max(maxY, y + NODO_ALTO / 2 + 60); /* +60: el pie de texto */
-    }
+    const b = this._bbox || this._calcularBBox();
+    const { minX, maxX, minY, maxY } = b;
+    const esMovil = this._esMovil();
 
-    const margen = 140;
-    const escala = Math.min(
+    /* Margen proporcional en pantallas chicas: 140px fijos se comen
+       el 72% de un viewport de 390px. */
+    const margen = esMovil ? Math.max(24, r.width * 0.08) : 140;
+
+    let escala = Math.min(
       ESCALA_MAX,
       Math.max(
-        ESCALA_MIN,
+        this._escalaMinima(),
         Math.min(
           (r.width - margen * 2) / (maxX - minX),
           (r.height - margen * 2) / (maxY - minY)
@@ -271,8 +359,24 @@
       )
     );
 
-    const centroX = (minX + maxX) / 2;
-    const centroY = (minY + maxY) / 2;
+    let centroX = (minX + maxX) / 2;
+    let centroY = (minY + maxY) / 2;
+
+    /* MÓVIL: si encuadrar todo deja las tarjetas ilegibles, mejor arrancar
+       ampliado sobre el corazón del árbol (centroide de las personas) y que
+       el usuario recorra con gestos. Ver todo-a-la-vez no sirve de nada si
+       no se distingue a nadie. */
+    if (esMovil && escala < 0.6) {
+      escala = ESCALA_ARRANQUE_MOVIL;
+      let sx = 0, sy = 0;
+      for (const p of this.perfiles) {
+        const pos = AlbumDatos.posicionDe(p.id);
+        sx += pos.x;
+        sy += pos.y;
+      }
+      centroX = sx / this.perfiles.length;
+      centroY = sy / this.perfiles.length;
+    }
 
     this.mundo.style.transition = animado ? 'transform 700ms cubic-bezier(0.22,1,0.36,1)' : 'none';
     this.escala = escala;
@@ -293,7 +397,10 @@
     const c = this.contenedor;
 
     c.addEventListener('pointerdown', (e) => {
-      c.setPointerCapture(e.pointerId);
+      /* La captura garantiza recibir move/up aunque el dedo salga del
+         lienzo. Si el navegador no la soporta para este puntero, los
+         gestos siguen funcionando mientras el dedo esté encima. */
+      try { c.setPointerCapture(e.pointerId); } catch (err) {}
       this._punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
       if (this._punteros.size === 1) {
@@ -348,17 +455,21 @@
       if (this._punteros.size === 0) {
         this._arrastre = null;
         c.classList.remove('arrastrando');
+        this._asegurarContenidoVisible();
       }
     };
     c.addEventListener('pointerup', soltar);
     c.addEventListener('pointercancel', soltar);
 
+    let ruedaTimer = null;
     c.addEventListener(
       'wheel',
       (e) => {
         e.preventDefault();
         const factor = Math.exp(-e.deltaY * SENSIBILIDAD_RUEDA);
         this.zoomEn(this.escala * factor, { x: e.clientX, y: e.clientY });
+        clearTimeout(ruedaTimer);
+        ruedaTimer = setTimeout(() => this._asegurarContenidoVisible(), 250);
       },
       { passive: false }
     );

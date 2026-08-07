@@ -1225,6 +1225,40 @@ select.campo__input option {
   .carta__flip { transition: none; }
 }
 
+/* ── Móvil (< 768px): encabezado apilado y controles que caben ──
+   El lienzo y sus gestos no cambian: pan de un dedo y pinza de dos ya
+   funcionan vía Pointer Events + touch-action:none en .lienzo. */
+@media (max-width: 767px) {
+  .cabecera {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .cabecera__marca {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .cabecera__titulo { font-size: 12px; letter-spacing: 0.3em; }
+
+  .cabecera__acciones { gap: 8px; }
+
+  .cabecera__buscar {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    padding: 9px 10px;
+  }
+
+  .btn-fantasma { padding: 9px 12px; }
+
+  .zoom-hud { display: none; } /* ruido en pantallas chicas */
+}
+
 /* ── Visor a pantalla completa ───────────────────────────────── */
 
 .visor {
