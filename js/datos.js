@@ -346,22 +346,49 @@
         }
       });
 
-      /* GENERACIONES: los fundadores (sin padres) quedan arriba y cada
-         descendiente baja un nivel. Relajación: hijo = padre + 1, y los
-         miembros de un bloque (pareja/co-padres) comparten nivel — así el
-         cónyuge "que se casó" no queda a la altura de los fundadores. */
-      const nivel = new Array(N).fill(0);
-      for (let it = 0; it < N; it++) {
-        let cambio = false;
-        for (const [p, c] of aristas) {
-          if (nivel[c] < nivel[p] + 1) { nivel[c] = nivel[p] + 1; cambio = true; }
-        }
-        for (const [a, b] of bloques) {
-          const m = Math.max(nivel[a], nivel[b]);
-          if (nivel[a] !== m || nivel[b] !== m) { nivel[a] = nivel[b] = m; cambio = true; }
-        }
-        if (!cambio) break;
+      /* GENERACIONES a prueba de datos imperfectos:
+         1) los miembros de un bloque (pareja/co-padres) se funden en un
+            GRUPO que comparte nivel (union-find);
+         2) el nivel de cada grupo es el camino más largo desde las raíces
+            (DFS memoizado);
+         3) las aristas CONTRADICTORIAS se ignoran para el nivel: si alguien
+            quedó como padre de su propia pareja (error de captura) o hay un
+            ciclo entre grupos, esa arista no cuenta — antes, este caso hacía
+            oscilar la relajación y el árbol explotaba a miles de píxeles. */
+      const raizUF = Array.from({ length: N }, (_, i) => i);
+      const find = (i) => {
+        while (raizUF[i] !== i) { raizUF[i] = raizUF[raizUF[i]]; i = raizUF[i]; }
+        return i;
+      };
+      for (const [a, b] of bloques) {
+        const ra = find(a), rb = find(b);
+        if (ra !== rb) raizUF[ra] = rb;
       }
+
+      /* aristas padre→hijo entre grupos; las intra-grupo se descartan */
+      const padresDeGrupo = new Map();
+      for (const [p, c] of aristas) {
+        const gp = find(p), gc = find(c);
+        if (gp === gc) continue; // contradicción: p e hijo comparten grupo
+        if (!padresDeGrupo.has(gc)) padresDeGrupo.set(gc, new Set());
+        padresDeGrupo.get(gc).add(gp);
+      }
+
+      const nivelGrupo = new Map();
+      const enPila = new Set();
+      const nivelDe = (g) => {
+        if (nivelGrupo.has(g)) return nivelGrupo.get(g);
+        if (enPila.has(g)) return 0; // ciclo entre grupos: se corta aquí
+        enPila.add(g);
+        let n = 0;
+        const padres = padresDeGrupo.get(g);
+        if (padres) for (const gp of padres) n = Math.max(n, nivelDe(gp) + 1);
+        enPila.delete(g);
+        nivelGrupo.set(g, n);
+        return n;
+      };
+      const nivel = new Array(N);
+      for (let i = 0; i < N; i++) nivel[i] = nivelDe(find(i));
       let maxNivel = 0;
       for (let i = 0; i < N; i++) if (nivel[i] > maxNivel) maxNivel = nivel[i];
       /* Y objetivo de cada nivel, centrado en el origen (nivel 0 = arriba). */
@@ -520,6 +547,42 @@
         if (p.id_padre && p.id_madre) agregar(p.id_padre, p.id_madre); // co-padres
       }
       return bloques;
+    },
+
+    /** Ancestros de una persona (por id_padre / id_madre), como Set de ids. */
+    ancestrosDe(perfiles, id) {
+      const porId = new Map(perfiles.map((p) => [p.id, p]));
+      const ids = new Set();
+      const pila = [id];
+      while (pila.length) {
+        const p = porId.get(pila.pop());
+        if (!p) continue;
+        for (const prog of [p.id_padre, p.id_madre]) {
+          if (prog && porId.has(prog) && !ids.has(prog)) {
+            ids.add(prog);
+            pila.push(prog);
+          }
+        }
+      }
+      return ids;
+    },
+
+    /** Descendientes de una persona (todos los niveles), como Set de ids. */
+    descendientesDe(perfiles, id) {
+      const ids = new Set([id]);
+      let cambio = true;
+      while (cambio) {
+        cambio = false;
+        for (const p of perfiles) {
+          if (ids.has(p.id)) continue;
+          if ((p.id_padre && ids.has(p.id_padre)) || (p.id_madre && ids.has(p.id_madre))) {
+            ids.add(p.id);
+            cambio = true;
+          }
+        }
+      }
+      ids.delete(id);
+      return ids;
     },
 
     /** La "rama" de una persona: su línea directa hacia arriba (ancestros),

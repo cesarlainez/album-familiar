@@ -71,27 +71,41 @@
     r.foto3.value = g[2] || '';
 
     /* Selectores de relaciones: elegir entre las personas que YA existen
-       en la familia (sin uno mismo). Permite ligar padre/madre reales y
-       registrar parejas entre nodos existentes. */
-    const otros = this.listaPerfiles()
+       en la familia. Se excluyen las opciones que romperían el árbol:
+       · Padre/Madre: ni uno mismo, ni un descendiente propio, ni la pareja
+         (una pareja registrada como padre fue justo el error que hizo
+         colapsar el dibujo).
+       · Parejas: ni ancestros ni descendientes directos. */
+    const todosLosPerfiles = this.listaPerfiles();
+    const otros = todosLosPerfiles
       .filter((x) => x.id !== p.id)
       .slice()
       .sort((a, b) => (a.nombre_completo || '').localeCompare(b.nombre_completo || ''));
 
+    const descendientes = AlbumDatos.descendientesDe(todosLosPerfiles, p.id);
+    const ancestros = AlbumDatos.ancestrosDe(todosLosPerfiles, p.id);
+    const parejasDe = new Set(Array.isArray(p.id_pareja) ? p.id_pareja : []);
+
     const llenarSelect = (sel, valorActual) => {
       sel.innerHTML = '';
       sel.appendChild(new Option('— Ninguno —', ''));
-      otros.forEach((x) => sel.appendChild(new Option(x.nombre_completo, x.id)));
+      otros.forEach((x) => {
+        if (descendientes.has(x.id) || parejasDe.has(x.id)) return;
+        sel.appendChild(new Option(x.nombre_completo, x.id));
+      });
       sel.value = valorActual || '';
+      /* si el valor actual quedó excluido (dato erróneo previo), el select
+         muestra "Ninguno": guardar corrige el error */
+      if (sel.value !== (valorActual || '')) sel.value = '';
     };
     llenarSelect(r.padre, p.id_padre);
     llenarSelect(r.madre, p.id_madre);
 
     r.parejas.innerHTML = '';
-    const parejasActuales = Array.isArray(p.id_pareja) ? p.id_pareja : [];
     otros.forEach((x) => {
+      if (descendientes.has(x.id) || ancestros.has(x.id)) return;
       const op = new Option(x.nombre_completo, x.id);
-      op.selected = parejasActuales.indexOf(x.id) !== -1;
+      op.selected = parejasDe.has(x.id);
       r.parejas.appendChild(op);
     });
 
