@@ -501,8 +501,33 @@
         unidadesPorFila.get(fila).push(unidad);
       }
 
-      for (const fila of unidadesPorFila.values()) {
-        fila.sort((u, v) => u.cx - v.cx);
+      /* Filas de arriba hacia abajo: cada unidad busca colocarse BAJO el
+         origen de su hilo (baricentro de sus padres, ya empacados en la
+         fila superior). Con eso los hilos caen casi verticales y los
+         cruces se minimizan — p. ej., dos primos ya no se dibujan
+         intercambiados respecto a sus padres. Quien no tiene padres en
+         el árbol conserva su posición de la física. */
+      const filasOrdenadas = [...unidadesPorFila.keys()].sort((a, b) => a - b);
+      for (const claveFila of filasOrdenadas) {
+        const fila = unidadesPorFila.get(claveFila);
+
+        for (const u of fila) {
+          u.fx = u.cx; // posición de la física, como desempate
+          let suma = 0, cuenta = 0;
+          for (const m of u.miembros) {
+            const per = perfiles[m];
+            const xs = [];
+            if (per.id_padre && idx.has(per.id_padre)) xs.push(px[idx.get(per.id_padre)]);
+            if (per.id_madre && idx.has(per.id_madre)) xs.push(px[idx.get(per.id_madre)]);
+            if (xs.length) {
+              suma += xs.reduce((s, v) => s + v, 0) / xs.length;
+              cuenta++;
+            }
+          }
+          if (cuenta) u.cx = suma / cuenta;
+        }
+
+        fila.sort((u, v) => (u.cx - v.cx) || (u.fx - v.fx));
         const mediaAntes = fila.reduce((s, u) => s + u.cx, 0) / fila.length;
         for (let k = 1; k < fila.length; k++) {
           const minimo = fila[k - 1].cx + fila[k - 1].mitad + fila[k].mitad;
