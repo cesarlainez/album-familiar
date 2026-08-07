@@ -64,7 +64,13 @@
       capaNodos: $('nodos'),
       capaHilos: $('capaHilos'),
       hud: $('zoomHud'),
-      alSeleccionar: (p) => perfil.abrir(p),
+      /* Al tocar una foto: la vista se centra en esa persona y la ficha
+         abre de inmediato — clave en móvil, donde el nodo puede estar
+         mal encuadrado en el borde de la pantalla. */
+      alSeleccionar: (p) => {
+        lienzo.centrarEn(p.id);
+        perfil.abrir(p);
+      },
     });
 
     $('btnCentrar').addEventListener('click', () => lienzo.centrar());

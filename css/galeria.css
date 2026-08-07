@@ -475,11 +475,15 @@ body:not(.modo-edicion) .btn-subir {
 }
 
 /* Hover: la tarjeta crece de forma marcada y se acerca al usuario,
-   elevándose por encima del resto de la constelación. */
-.nodo:hover,
-.nodo:focus-visible {
-  transform: translate(-50%, -50%) scale(1.22);
-  z-index: 20;
+   elevándose por encima del resto de la constelación.
+   SOLO con puntero que de verdad "sobrevuela" (mouse): en táctil el
+   hover se queda pegado al tocar y ensucia el primer toque. */
+@media (hover: hover) {
+  .nodo:hover,
+  .nodo:focus-visible {
+    transform: translate(-50%, -50%) scale(1.22);
+    z-index: 20;
+  }
 }
 
 @keyframes revelar {
@@ -525,24 +529,26 @@ body:not(.modo-edicion) .btn-subir {
   pointer-events: none;
 }
 
-.nodo:hover .nodo__marco,
-.nodo:focus-visible .nodo__marco {
-  transform: translateY(-4px);
-  /* Sombra proyectada más amplia y con más brillo cálido: "resalta". */
-  box-shadow:
-    0 54px 100px -16px rgba(0, 0, 0, 1),
-    0 0 46px -2px rgba(255, 248, 231, 0.34),
-    0 0 0 1px rgba(255, 248, 231, 0.3);
-}
+@media (hover: hover) {
+  .nodo:hover .nodo__marco,
+  .nodo:focus-visible .nodo__marco {
+    transform: translateY(-4px);
+    /* Sombra proyectada más amplia y con más brillo cálido: "resalta". */
+    box-shadow:
+      0 54px 100px -16px rgba(0, 0, 0, 1),
+      0 0 46px -2px rgba(255, 248, 231, 0.34),
+      0 0 0 1px rgba(255, 248, 231, 0.3);
+  }
 
-.nodo:hover .nodo__foto,
-.nodo:focus-visible .nodo__foto {
-  filter: grayscale(0.1) brightness(0.98) contrast(1.02);
-  transform: scale(1.05);
-}
+  .nodo:hover .nodo__foto,
+  .nodo:focus-visible .nodo__foto {
+    filter: grayscale(0.1) brightness(0.98) contrast(1.02);
+    transform: scale(1.05);
+  }
 
-.nodo:hover .nodo__halo,
-.nodo:focus-visible .nodo__halo { opacity: 1; }
+  .nodo:hover .nodo__halo,
+  .nodo:focus-visible .nodo__halo { opacity: 1; }
+}
 
 .nodo:focus-visible { outline: none; }
 
@@ -583,7 +589,9 @@ body:not(.modo-edicion) .btn-subir {
   transition: color var(--medio) var(--curva);
 }
 
-.nodo:hover .nodo__disciplina { color: var(--luz-ambar); }
+@media (hover: hover) {
+  .nodo:hover .nodo__disciplina { color: var(--luz-ambar); }
+}
 
 /* Marcador de posición cuando el nodo no tiene fotografía */
 .nodo__placeholder {
@@ -602,8 +610,10 @@ body:not(.modo-edicion) .btn-subir {
   transition: color var(--medio) var(--curva);
 }
 
-.nodo:hover .nodo__placeholder,
-.nodo:focus-visible .nodo__placeholder { color: var(--luz-ambar); }
+@media (hover: hover) {
+  .nodo:hover .nodo__placeholder,
+  .nodo:focus-visible .nodo__placeholder { color: var(--luz-ambar); }
+}
 
 /* ── HUD de zoom ─────────────────────────────────────────────── */
 

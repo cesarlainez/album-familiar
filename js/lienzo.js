@@ -391,6 +391,18 @@
     }
   };
 
+  /** Centra suavemente la vista sobre una persona (sin cambiar el zoom).
+   *  Se usa al abrir su ficha: la foto queda de fondo, protagonista. */
+  Lienzo.prototype.centrarEn = function (id) {
+    const pos = AlbumDatos.posicionDe(id);
+    const r = this.contenedor.getBoundingClientRect();
+    this.mundo.style.transition = 'transform 450ms cubic-bezier(0.22,1,0.36,1)';
+    this.desplazamiento.x = r.width / 2 - pos.x * this.escala;
+    this.desplazamiento.y = r.height / 2 - pos.y * this.escala;
+    this._aplicar();
+    setTimeout(() => { this.mundo.style.transition = 'none'; }, 470);
+  };
+
   /* ── Entrada: arrastre, rueda, pinza, teclado ────────────── */
 
   Lienzo.prototype._conectarEventos = function () {
