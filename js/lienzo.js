@@ -443,8 +443,12 @@
       const g = this._gesto;
       this._gesto = null;
       if (!g || !g.nodo) return;
-      /* Umbral de 5 px: separa un clic de un micro-arrastre */
-      if (Math.hypot(e.clientX - g.x, e.clientY - g.y) >= 5) return;
+      /* Umbral que separa un toque de un arrastre. Con mouse los clics son
+         precisos (5px); con el dedo SIEMPRE hay temblor de 5–15px, así que
+         un umbral de mouse hacía que muchos toques legítimos no abrieran
+         la ficha. 16px ≈ el "touch slop" estándar de las plataformas. */
+      const umbral = e.pointerType === 'mouse' ? 5 : 16;
+      if (Math.hypot(e.clientX - g.x, e.clientY - g.y) >= umbral) return;
       const perfil = this.perfiles.find((p) => p.id === g.nodo.dataset.id);
       if (perfil) this.alSeleccionar(perfil);
     });
