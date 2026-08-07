@@ -462,44 +462,66 @@
         }
       }
 
-      /* ── GARANTÍA ANTICOLISIÓN ────────────────────────────────
-         La repulsión es "blanda" y con muchas personas puede ceder:
-         esta pasada final separa CUALQUIER par de tarjetas encimadas
-         (rectángulos de tarjeta + nombre) empujándolas por el eje de
-         menor solape. Las parejas rígidas se mueven como bloque. Se
-         itera hasta que ninguna tarjeta queda sobre otra. */
+      /* ── ORDEN FINAL GARANTIZADO ──────────────────────────────
+         1) Cada persona se ANCLA exactamente a la banda de su
+            generación: la gravedad de nivel es blanda y los resortes
+            podían comprimir las filas hasta encimar tarjetas de
+            niveles vecinos o incluso invertir padre/hijo. Con el
+            anclaje, las generaciones quedan en filas limpias a 380px
+            y eso es imposible.
+         2) Dentro de cada fila, separación horizontal hasta que
+            ninguna tarjeta (foto + etiqueta) toque a otra. */
+      for (let i = 0; i < N; i++) py[i] = objetivoY(i);
+
+      /* Con las filas ancladas (380px > alto de tarjeta+pie), los choques
+         solo pueden ocurrir DENTRO de una fila. Se resuelven con un
+         empaquetado exacto en 1-D: cada fila se ordena por x, se barre de
+         izquierda a derecha imponiendo la separación mínima (las parejas
+         rígidas viajan como una sola unidad) y se recentra para conservar
+         su posición media. Exacto y sin oscilaciones. */
       const SEP_W = 235; // 168 de tarjeta + etiqueta de 210 + aire
-      const SEP_H = 345; // 228 de foto + pie de texto + aire
       const compa = new Array(N).fill(-1);
       for (const [a, b] of rigidos) { compa[a] = b; compa[b] = a; }
-      const empujar = (i, dx, dy) => {
-        px[i] += dx; py[i] += dy;
+
+      const unidadesPorFila = new Map();
+      const hecho = new Set();
+      for (let i = 0; i < N; i++) {
+        if (hecho.has(i)) continue;
         const c = compa[i];
-        if (c >= 0) { px[c] += dx; py[c] += dy; }
-      };
-      for (let pase = 0; pase < 80; pase++) {
-        let solapo = false;
-        for (let i = 0; i < N; i++) {
-          for (let j = i + 1; j < N; j++) {
-            if (compa[i] === j) continue; // la pareja guarda su propia distancia
-            const dx = px[j] - px[i];
-            const dy = py[j] - py[i];
-            const ox = SEP_W - Math.abs(dx);
-            const oy = SEP_H - Math.abs(dy);
-            if (ox <= 0 || oy <= 0) continue;
-            solapo = true;
-            if (ox < oy) {
-              const s = dx > 0 ? 1 : dx < 0 ? -1 : 1;
-              empujar(i, (-s * ox) / 2, 0);
-              empujar(j, (s * ox) / 2, 0);
-            } else {
-              const s = dy > 0 ? 1 : dy < 0 ? -1 : 1;
-              empujar(i, 0, (-s * oy) / 2);
-              empujar(j, 0, (s * oy) / 2);
-            }
+        let unidad;
+        if (c >= 0) {
+          hecho.add(i); hecho.add(c);
+          unidad = { miembros: [i, c], cx: (px[i] + px[c]) / 2, mitad: COUPLE_GAP / 2 + SEP_W / 2 };
+        } else {
+          hecho.add(i);
+          unidad = { miembros: [i], cx: px[i], mitad: SEP_W / 2 };
+        }
+        const fila = nivel[i];
+        if (!unidadesPorFila.has(fila)) unidadesPorFila.set(fila, []);
+        unidadesPorFila.get(fila).push(unidad);
+      }
+
+      for (const fila of unidadesPorFila.values()) {
+        fila.sort((u, v) => u.cx - v.cx);
+        const mediaAntes = fila.reduce((s, u) => s + u.cx, 0) / fila.length;
+        for (let k = 1; k < fila.length; k++) {
+          const minimo = fila[k - 1].cx + fila[k - 1].mitad + fila[k].mitad;
+          if (fila[k].cx < minimo) fila[k].cx = minimo;
+        }
+        const mediaDespues = fila.reduce((s, u) => s + u.cx, 0) / fila.length;
+        const correccion = mediaAntes - mediaDespues;
+        for (const u of fila) {
+          u.cx += correccion;
+          if (u.miembros.length === 2) {
+            const [a, b] = u.miembros;
+            const izq = px[a] <= px[b] ? a : b;
+            const der = izq === a ? b : a;
+            px[izq] = u.cx - COUPLE_GAP / 2;
+            px[der] = u.cx + COUPLE_GAP / 2;
+          } else {
+            px[u.miembros[0]] = u.cx;
           }
         }
-        if (!solapo) break;
       }
 
       perfiles.forEach((p, i) => pos.set(p.id, { x: px[i], y: py[i] }));
