@@ -827,8 +827,17 @@ body:not(.modo-edicion) .btn-subir {
   font-weight: 300;
   letter-spacing: 0.14em;
   color: var(--gris-tenue);
-  margin-top: -18px;
 }
+
+/* La vista de lectura fluye en columna con espacio propio: los nombres
+   largos (2 líneas) ya no se montan con las fechas. */
+.ficha-lectura {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ficha-lectura .ficha-datos__nombre { margin-bottom: -6px; }
 
 .ficha-datos__bloque {
   border-top: 1px solid rgba(255, 255, 255, 0.07);
@@ -964,8 +973,19 @@ body:not(.modo-edicion) .btn-subir {
 
 .campo__input::placeholder { color: var(--gris-tenue); }
 
-/* Los date pickers en tema oscuro */
-.campo__input[type='date'] { color-scheme: dark; }
+/* Los date pickers y selects en tema oscuro */
+.campo__input[type='date'],
+select.campo__input { color-scheme: dark; }
+
+select.campo__input option {
+  background: #151515;
+  color: var(--blanco-brillo);
+}
+
+.campo__multiple {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
 
 .campo__area {
   resize: vertical;

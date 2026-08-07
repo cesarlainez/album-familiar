@@ -21,6 +21,7 @@
     this.perfil = opciones.perfil;
     this.recargar = opciones.recargar;
     this.toast = opciones.toast || function () {};
+    this.listaPerfiles = opciones.perfiles || function () { return []; };
 
     this.refs = {
       lectura: $('fichaLectura'),
@@ -34,6 +35,9 @@
       foto1: $('editFoto1'),
       foto2: $('editFoto2'),
       foto3: $('editFoto3'),
+      padre: $('editPadre'),
+      madre: $('editMadre'),
+      parejas: $('editParejas'),
       cancelar: $('editCancelar'),
       archivoFoto: $('archivoFoto'),
     };
@@ -66,6 +70,31 @@
     r.foto2.value = g[1] || '';
     r.foto3.value = g[2] || '';
 
+    /* Selectores de relaciones: elegir entre las personas que YA existen
+       en la familia (sin uno mismo). Permite ligar padre/madre reales y
+       registrar parejas entre nodos existentes. */
+    const otros = this.listaPerfiles()
+      .filter((x) => x.id !== p.id)
+      .slice()
+      .sort((a, b) => (a.nombre_completo || '').localeCompare(b.nombre_completo || ''));
+
+    const llenarSelect = (sel, valorActual) => {
+      sel.innerHTML = '';
+      sel.appendChild(new Option('— Ninguno —', ''));
+      otros.forEach((x) => sel.appendChild(new Option(x.nombre_completo, x.id)));
+      sel.value = valorActual || '';
+    };
+    llenarSelect(r.padre, p.id_padre);
+    llenarSelect(r.madre, p.id_madre);
+
+    r.parejas.innerHTML = '';
+    const parejasActuales = Array.isArray(p.id_pareja) ? p.id_pareja : [];
+    otros.forEach((x) => {
+      const op = new Option(x.nombre_completo, x.id);
+      op.selected = parejasActuales.indexOf(x.id) !== -1;
+      r.parejas.appendChild(op);
+    });
+
     r.lectura.hidden = true;
     r.editor.hidden = false;
     r.nombre.focus();
@@ -79,6 +108,11 @@
     if (!p) return;
     const r = this.refs;
 
+    const parejasSeleccionadas = Array.prototype.slice
+      .call(r.parejas.selectedOptions)
+      .map((op) => op.value)
+      .filter(Boolean);
+
     const cambios = {
       nombre_completo: r.nombre.value.trim() || 'Sin nombre',
       fecha_nacimiento: r.nacimiento.value || null,
@@ -90,10 +124,14 @@
         .map((s) => s.trim())
         .filter(Boolean)
         .slice(0, 3),
+      id_padre: r.padre.value || null,
+      id_madre: r.madre.value || null,
+      id_pareja: parejasSeleccionadas,
     };
 
     try {
       await AlbumDatos.actualizar(p.id_familia, p.id, cambios);
+      await this._sincronizarParejas(p, parejasSeleccionadas);
       const perfiles = await this.recargar({ recentrar: false });
       const fresco = perfiles.find((x) => x.id === p.id) || Object.assign({}, p, cambios);
       this.perfil.refrescar(fresco);
@@ -155,6 +193,38 @@
   Mantenimiento.prototype._error = function (mensaje, e) {
     console.error('[Mantenimiento]', mensaje, e);
     global.alert(mensaje + (e && e.message ? ': ' + e.message : '.'));
+  };
+
+  /** Mantiene la relación de pareja en AMBOS lados: al agregar una pareja
+   *  aquí, el otro también la lista; al quitarla, se borra del otro lado.
+   *  Así los lazos del lienzo nunca quedan "a medias". */
+  Mantenimiento.prototype._sincronizarParejas = async function (p, ahora) {
+    const antes = Array.isArray(p.id_pareja) ? p.id_pareja : [];
+    const setAhora = new Set(ahora);
+    const setAntes = new Set(antes);
+    const porId = new Map(this.listaPerfiles().map((x) => [x.id, x]));
+
+    for (const id of ahora) {
+      if (setAntes.has(id)) continue;
+      const otro = porId.get(id);
+      if (!otro) continue;
+      const lista = Array.isArray(otro.id_pareja) ? otro.id_pareja.slice() : [];
+      if (lista.indexOf(p.id) === -1) {
+        lista.push(p.id);
+        await AlbumDatos.actualizar(otro.id_familia, otro.id, { id_pareja: lista });
+      }
+    }
+
+    for (const id of antes) {
+      if (setAhora.has(id)) continue;
+      const otro = porId.get(id);
+      if (!otro || !Array.isArray(otro.id_pareja)) continue;
+      if (otro.id_pareja.indexOf(p.id) !== -1) {
+        await AlbumDatos.actualizar(otro.id_familia, otro.id, {
+          id_pareja: otro.id_pareja.filter((z) => z !== p.id),
+        });
+      }
+    }
   };
 
   /* ── Subida de fotografías ───────────────────────────────── */

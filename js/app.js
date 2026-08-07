@@ -71,14 +71,22 @@
 
     /* Relee la familia activa y redibuja. Alterna el estado vacío.
        Devuelve los perfiles frescos para localizar nodos nuevos/editados. */
+    let ultimosPerfiles = [];
     const recargar = async (opciones) => {
       const perfiles = await AlbumDatos.obtenerPerfiles(familiaActual);
+      ultimosPerfiles = perfiles;
       lienzo.dibujar(perfiles, opciones);
       $('lienzoVacio').hidden = perfiles.length !== 0;
       return perfiles;
     };
 
-    const mantenimiento = new Mantenimiento({ perfil, recargar, toast });
+    const mantenimiento = new Mantenimiento({
+      perfil,
+      recargar,
+      toast,
+      /* Lista actual de la familia: alimenta los selectores de relaciones */
+      perfiles: () => ultimosPerfiles,
+    });
 
     /* ── Selector de familia (autocompletado) ─────────────────── */
     async function rellenarFamilias() {

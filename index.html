@@ -210,6 +210,23 @@
                 <textarea class="campo__input campo__area" id="editBio" rows="3"></textarea>
               </label>
 
+              <!-- Relaciones con personas que YA existen en la familia -->
+              <div class="campo-fila">
+                <label class="campo">
+                  <span class="campo__etiqueta">Padre</span>
+                  <select class="campo__input" id="editPadre"></select>
+                </label>
+                <label class="campo">
+                  <span class="campo__etiqueta">Madre</span>
+                  <select class="campo__input" id="editMadre"></select>
+                </label>
+              </div>
+
+              <label class="campo">
+                <span class="campo__etiqueta">Parejas (Ctrl+clic para elegir varias)</span>
+                <select class="campo__input campo__multiple" id="editParejas" multiple size="4"></select>
+              </label>
+
               <fieldset class="campo campo--fotos">
                 <span class="campo__etiqueta">Fotografías (hasta 3)</span>
                 <div class="foto-fila">
@@ -250,12 +267,12 @@
   <!-- SDK de Supabase (UMD): expone window.supabase. Sin build step. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <script src="js/config.js?v=9"></script>
-  <script src="js/servicios/supabase.js?v=9"></script>
-  <script src="js/datos.js?v=9"></script>
-  <script src="js/lienzo.js?v=9"></script>
-  <script src="js/perfil.js?v=9"></script>
-  <script src="js/mantenimiento.js?v=9"></script>
-  <script src="js/app.js?v=9"></script>
+  <script src="js/config.js?v=10"></script>
+  <script src="js/servicios/supabase.js?v=10"></script>
+  <script src="js/datos.js?v=10"></script>
+  <script src="js/lienzo.js?v=10"></script>
+  <script src="js/perfil.js?v=10"></script>
+  <script src="js/mantenimiento.js?v=10"></script>
+  <script src="js/app.js?v=10"></script>
 </body>
 </html>
