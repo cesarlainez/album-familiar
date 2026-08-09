@@ -13,7 +13,7 @@
 (function (global) {
   'use strict';
 
-  const MAX_FOTOS = 3;
+  const MAX_FOTOS = 4;
 
   function Perfil(refs) {
     this.refs = refs;

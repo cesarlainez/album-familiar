@@ -267,7 +267,7 @@
               </label>
 
               <fieldset class="campo campo--fotos">
-                <span class="campo__etiqueta">Fotografías (hasta 3)</span>
+                <span class="campo__etiqueta">Fotografías (hasta 4)</span>
                 <div class="foto-fila">
                   <input class="campo__input" id="editFoto1" type="url" placeholder="https://… o sube un archivo" />
                   <button class="btn-crud btn-subir" type="button" data-subir="1" title="Subir foto desde tu equipo">Subir</button>
@@ -280,7 +280,11 @@
                   <input class="campo__input" id="editFoto3" type="url" placeholder="https://… o sube un archivo" />
                   <button class="btn-crud btn-subir" type="button" data-subir="3" title="Subir foto desde tu equipo">Subir</button>
                 </div>
-                <!-- Selector de archivo oculto, compartido por los 3 botones -->
+                <div class="foto-fila">
+                  <input class="campo__input" id="editFoto4" type="url" placeholder="https://… o sube un archivo" />
+                  <button class="btn-crud btn-subir" type="button" data-subir="4" title="Subir foto desde tu equipo">Subir</button>
+                </div>
+                <!-- Selector de archivo oculto, compartido por los 4 botones -->
                 <input id="archivoFoto" type="file" accept="image/*" hidden />
               </fieldset>
 
@@ -306,13 +310,13 @@
   <!-- SDK de Supabase (UMD): expone window.supabase. Sin build step. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <script src="js/config.js?v=19"></script>
-  <script src="js/servicios/supabase.js?v=19"></script>
-  <script src="js/datos.js?v=19"></script>
-  <script src="js/lienzo.js?v=19"></script>
-  <script src="js/perfil.js?v=19"></script>
-  <script src="js/mantenimiento.js?v=19"></script>
-  <script src="js/exportar.js?v=19"></script>
-  <script src="js/app.js?v=19"></script>
+  <script src="js/config.js?v=20"></script>
+  <script src="js/servicios/supabase.js?v=20"></script>
+  <script src="js/datos.js?v=20"></script>
+  <script src="js/lienzo.js?v=20"></script>
+  <script src="js/perfil.js?v=20"></script>
+  <script src="js/mantenimiento.js?v=20"></script>
+  <script src="js/exportar.js?v=20"></script>
+  <script src="js/app.js?v=20"></script>
 </body>
 </html>

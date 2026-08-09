@@ -35,6 +35,7 @@
       foto1: $('editFoto1'),
       foto2: $('editFoto2'),
       foto3: $('editFoto3'),
+      foto4: $('editFoto4'),
       padre: $('editPadre'),
       madre: $('editMadre'),
       parejas: $('editParejas'),
@@ -69,6 +70,7 @@
     r.foto1.value = g[0] || '';
     r.foto2.value = g[1] || '';
     r.foto3.value = g[2] || '';
+    r.foto4.value = g[3] || '';
 
     /* Selectores de relaciones: elegir entre las personas que YA existen
        en la familia. Se excluyen las opciones que romperían el árbol:
@@ -134,10 +136,10 @@
       disciplina_artistica: r.disciplina.value.trim(),
       obra_maestra: r.obra.value.trim(),
       biografia: r.bio.value.trim(),
-      galeria: [r.foto1.value, r.foto2.value, r.foto3.value]
+      galeria: [r.foto1.value, r.foto2.value, r.foto3.value, r.foto4.value]
         .map((s) => s.trim())
         .filter(Boolean)
-        .slice(0, 3),
+        .slice(0, 4),
       id_padre: r.padre.value || null,
       id_madre: r.madre.value || null,
       id_pareja: parejasSeleccionadas,

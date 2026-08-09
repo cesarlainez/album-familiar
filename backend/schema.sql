@@ -15,7 +15,7 @@ create table if not exists public.perfiles (
   disciplina_artistica  text,
   obra_maestra          text,
   biografia             text,
-  galeria               text[]      not null default '{}',  -- hasta 3 URLs
+  galeria               text[]      not null default '{}',  -- hasta 4 URLs
   id_padre              text,
   id_madre              text,
   id_pareja             text[]      not null default '{}',  -- parejas/cónyuges
@@ -33,9 +33,14 @@ create table if not exists public.perfiles (
     foreign key (id_familia, id_madre)
     references public.perfiles (id_familia, id) on delete set null,
 
-  -- Tope de 3 fotos por perfil (regla de la "Galería Nocturna").
-  constraint perfiles_galeria_max3 check (cardinality(galeria) <= 3)
+  -- Tope de 4 fotos por perfil (regla de la "Galería Nocturna").
+  constraint perfiles_galeria_max4 check (cardinality(galeria) <= 4)
 );
+
+-- Migración: proyectos creados con el tope anterior de 3 fotos.
+alter table public.perfiles drop constraint if exists perfiles_galeria_max3;
+alter table public.perfiles drop constraint if exists perfiles_galeria_max4;
+alter table public.perfiles add constraint perfiles_galeria_max4 check (cardinality(galeria) <= 4);
 
 -- Migración: si la tabla ya existía de una versión anterior, añade la columna.
 alter table public.perfiles

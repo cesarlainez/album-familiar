@@ -134,7 +134,7 @@ de "uso semilla local": ahora los nodos vienen de Supabase.
 
 Cada perfil abierto muestra una barra de acciones:
 
-- **Editar** — nombre, fechas, disciplina, obra, biografía y hasta 3 URLs de foto.
+- **Editar** — nombre, fechas, disciplina, obra, biografía y hasta 4 fotos (URL o subida directa).
 - **+ Pareja / + Hijo / + Padre-Madre** — crean un nodo ya vinculado y lo abren
   en edición para nombrarlo. "+ Hijo" cuelga de la pareja si existe.
 - **Eliminar** — con confirmación; limpia también las referencias de pareja.
