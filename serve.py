@@ -20,6 +20,22 @@ class SinCache(http.server.SimpleHTTPRequestHandler):
         self.send_header("Expires", "0")
         super().end_headers()
 
+    # Utilidad de desarrollo: permite guardar la imagen social (og-image)
+    # generada en el navegador. Solo acepta ese nombre de archivo exacto.
+    def do_PUT(self):
+        if self.path != "/og-image.jpg":
+            self.send_error(403)
+            return
+        largo = int(self.headers.get("Content-Length", 0))
+        if largo <= 0 or largo > 2_000_000:
+            self.send_error(400)
+            return
+        datos = self.rfile.read(largo)
+        with open("og-image.jpg", "wb") as f:
+            f.write(datos)
+        self.send_response(201)
+        self.end_headers()
+
 
 with socketserver.TCPServer(("127.0.0.1", PUERTO), SinCache) as httpd:
     print(f"Álbum Familiar servido en http://127.0.0.1:{PUERTO} (sin caché)")
