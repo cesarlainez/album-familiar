@@ -101,6 +101,30 @@ de "uso semilla local": ahora los nodos vienen de Supabase.
 
 ---
 
+## Copia de seguridad — hazla
+
+**La nube no es un respaldo.** Un proyecto gratuito de Supabase se pausa por
+inactividad y, si sigue pausado, acaba borrándose: con él se va todo lo que no
+esté en este repositorio. Ya pasó una vez.
+
+En el menu **Descargar** hay dos entradas para esto:
+
+- **Copia de seguridad (.zip)** — un único archivo con `album.json` (todos los
+  perfiles, fechas, biografías y relaciones) y la carpeta `fotos/` con cada
+  imagen descargada de la nube. Respalda siempre la familia completa, aunque
+  estés viendo una rama filtrada.
+- **Restaurar copia…** (solo en modo edición) — vuelve a subir las fotos al
+  Storage y reescribe los perfiles. No borra a nadie: actualiza lo que existe
+  y crea lo que falta, así que sirve tanto para recuperar como para mudarse a
+  un proyecto nuevo.
+
+El ZIP se escribe y se lee a mano en `js/respaldo.js`, sin librerías y sin
+comprimir (las fotos ya son JPEG). Se abre con cualquier descompresor, y las
+fotos quedan ahí como archivos normales aunque el código desaparezca.
+
+Guarda el .zip fuera de la maquina: correo, Drive, un disco externo. Hazlo cada
+vez que agregues fotos o personas.
+
 ## Variables / claves — resumen
 
 | Clave                        | Pública | Dónde                       | Para qué                          |

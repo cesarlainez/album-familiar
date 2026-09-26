@@ -202,6 +202,31 @@
       datosLocales = copiaSemilla();
     },
 
+    /** Reescribe una familia completa a partir de una copia de seguridad.
+     *  No borra a nadie: actualiza los perfiles que ya existen y crea los
+     *  que faltan. Va en dos pasadas porque padre/madre son claves foráneas
+     *  y una fila no puede apuntar a otra que aún no se ha insertado. */
+    async reemplazarFamilia(idFamilia, perfiles) {
+      const completos = perfiles.map((p) =>
+        persona(Object.assign({}, p, { id_familia: idFamilia }))
+      );
+      const svc = conBackend();
+
+      if (svc) {
+        const sinLazos = completos.map((p) =>
+          Object.assign({}, p, { id_padre: null, id_madre: null, id_pareja: [] })
+        );
+        await svc.guardarVarios(sinLazos); // 1) todas las personas
+        await svc.guardarVarios(completos); // 2) ya con sus relaciones
+        return completos.length;
+      }
+
+      const ajenos = datosLocales.filter((x) => x.id_familia !== idFamilia);
+      datosLocales = ajenos.concat(completos);
+      guardarLocal();
+      return completos.length;
+    },
+
     /** Lista los id_familia que ya existen en el sistema (para autocompletar).
      *  Local: familias con al menos un perfil. Backend: delega en el servicio. */
     async listarFamilias() {

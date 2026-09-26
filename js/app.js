@@ -102,6 +102,62 @@
     $('descargarPNG').addEventListener('click', () => exportarArbol('png'));
     $('descargarPDF').addEventListener('click', () => exportarArbol('pdf'));
 
+    /* ── Copia de seguridad ─────────────────────────────────────
+       El PNG y el PDF son recuerdos; esto es el seguro. Se respalda
+       SIEMPRE la familia completa (ultimosPerfiles), nunca la rama
+       filtrada: una copia parcial da una falsa sensación de refugio. */
+    $('descargarRespaldo').addEventListener('click', async () => {
+      menuDescargar.hidden = true;
+      if (!ultimosPerfiles.length) return toast('No hay nada que respaldar todavía');
+      toast('Preparando la copia…');
+      try {
+        const r = await AlbumRespaldo.descargar(
+          ultimosPerfiles, familiaActual, etiquetaTenant(familiaActual), toast
+        );
+        toast(
+          'Copia lista: ' + r.perfiles + ' perfiles y ' + r.fotos + ' fotos' +
+          (r.fallidas ? ' (' + r.fallidas + ' fotos no se pudieron descargar)' : '')
+        );
+      } catch (err) {
+        console.error('[Respaldo]', err);
+        global.alert('No se pudo crear la copia: ' + err.message);
+      }
+    });
+
+    const selectorRespaldo = $('archivoRespaldo');
+    $('restaurarRespaldo').addEventListener('click', () => {
+      menuDescargar.hidden = true;
+      selectorRespaldo.value = ''; // permite reelegir el mismo archivo
+      selectorRespaldo.click();
+    });
+
+    selectorRespaldo.addEventListener('change', async () => {
+      const archivo = selectorRespaldo.files && selectorRespaldo.files[0];
+      if (!archivo) return;
+      try {
+        const { manifiesto, archivos } = await AlbumRespaldo.leer(archivo);
+        const cuando = new Date(manifiesto.generado).toLocaleString();
+        const seguir = global.confirm(
+          'Copia del ' + cuando + ': ' + manifiesto.perfiles.length + ' perfiles y ' +
+          (manifiesto.total_fotos || 0) + ' fotos.\n\n' +
+          'Se restaurarán sobre la familia "' + etiquetaTenant(familiaActual) + '".\n' +
+          'Los perfiles que ya existan se sobrescribirán con los de la copia. ' +
+          'Nadie será eliminado.\n\n¿Continuar?'
+        );
+        if (!seguir) return;
+        toast('Restaurando…');
+        const r = await AlbumRespaldo.restaurar(manifiesto, archivos, familiaActual, toast);
+        await recargar();
+        toast(
+          'Restaurados ' + r.perfiles + ' perfiles y ' + r.fotos + ' fotos' +
+          (r.sinSubir ? ' (' + r.sinSubir + ' fotos necesitan la nube)' : '')
+        );
+      } catch (err) {
+        console.error('[Restaurar]', err);
+        global.alert('No se pudo restaurar: ' + err.message);
+      }
+    });
+
     /* ── Filtro de rama: ver solo la línea de una persona ────── */
     $('btnVerRama').addEventListener('click', async () => {
       const p = perfil.perfilActual;

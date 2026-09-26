@@ -313,8 +313,17 @@ body {
 body:not(.modo-edicion) .ficha-acciones,
 body:not(.modo-edicion) #btnPrimeraPersona,
 body:not(.modo-edicion) .lienzo-vacio__nota,
-body:not(.modo-edicion) .btn-subir {
+body:not(.modo-edicion) .btn-subir,
+body:not(.modo-edicion) .solo-edicion {
   display: none !important;
+}
+
+/* Separador dentro del menú de descargas: arriba el árbol como imagen,
+   abajo el respaldo de los datos. Son dos cosas distintas. */
+.descargar__sep {
+  border: 0;
+  border-top: 1px solid rgba(245, 230, 200, 0.12);
+  margin: 0.35rem 0.2rem;
 }
 
 /* ── Editor: filas de fotografía con botón de subida ─────────── */

@@ -97,6 +97,16 @@
       return data;
     },
 
+    /** Inserta o actualiza varios perfiles de una vez (restaurar copia).
+     *  La clave primaria es compuesta, de ahí el onConflict explícito. */
+    async guardarVarios(perfiles) {
+      if (!perfiles.length) return;
+      const { error } = await cliente()
+        .from('perfiles')
+        .upsert(perfiles, { onConflict: 'id_familia,id' });
+      if (error) throw error;
+    },
+
     /** Actualiza campos de un perfil (por tenant + id). */
     async actualizar(idFamilia, id, cambios) {
       const { error } = await cliente()

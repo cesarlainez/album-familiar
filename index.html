@@ -63,6 +63,10 @@
         <div class="descargar__menu" id="descargarMenu" hidden>
           <button class="btn-crud" id="descargarPNG" type="button">Imagen (PNG)</button>
           <button class="btn-crud" id="descargarPDF" type="button">Documento (PDF)</button>
+          <hr class="descargar__sep" />
+          <button class="btn-crud" id="descargarRespaldo" type="button" title="Perfiles y fotos en un solo archivo">Copia de seguridad (.zip)</button>
+          <button class="btn-crud solo-edicion" id="restaurarRespaldo" type="button" title="Volver a cargar una copia descargada antes">Restaurar copia…</button>
+          <input id="archivoRespaldo" type="file" accept=".zip,.json" hidden />
         </div>
       </div>
       <button class="btn-fantasma" id="btnCentrar" title="Centrar la constelación (tecla C)">Centrar</button>
@@ -310,13 +314,14 @@
   <!-- SDK de Supabase (UMD): expone window.supabase. Sin build step. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <script src="js/config.js?v=20"></script>
-  <script src="js/servicios/supabase.js?v=20"></script>
-  <script src="js/datos.js?v=20"></script>
-  <script src="js/lienzo.js?v=20"></script>
-  <script src="js/perfil.js?v=20"></script>
-  <script src="js/mantenimiento.js?v=20"></script>
-  <script src="js/exportar.js?v=20"></script>
-  <script src="js/app.js?v=20"></script>
+  <script src="js/config.js?v=21"></script>
+  <script src="js/servicios/supabase.js?v=21"></script>
+  <script src="js/datos.js?v=21"></script>
+  <script src="js/lienzo.js?v=21"></script>
+  <script src="js/perfil.js?v=21"></script>
+  <script src="js/mantenimiento.js?v=21"></script>
+  <script src="js/exportar.js?v=21"></script>
+  <script src="js/respaldo.js?v=21"></script>
+  <script src="js/app.js?v=21"></script>
 </body>
 </html>
