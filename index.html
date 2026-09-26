@@ -312,16 +312,19 @@
   </div>
 
   <!-- SDK de Supabase (UMD): expone window.supabase. Sin build step. -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Firebase (compat: expone window.firebase, sin necesidad de módulos) -->
+  <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore-compat.js"></script>
 
-  <script src="js/config.js?v=21"></script>
-  <script src="js/servicios/supabase.js?v=21"></script>
-  <script src="js/datos.js?v=21"></script>
-  <script src="js/lienzo.js?v=21"></script>
-  <script src="js/perfil.js?v=21"></script>
-  <script src="js/mantenimiento.js?v=21"></script>
-  <script src="js/exportar.js?v=21"></script>
-  <script src="js/respaldo.js?v=21"></script>
-  <script src="js/app.js?v=21"></script>
+  <script src="js/config.js?v=22"></script>
+  <script src="js/servicios/firebase.js?v=22"></script>
+  <script src="js/datos.js?v=22"></script>
+  <script src="js/lienzo.js?v=22"></script>
+  <script src="js/perfil.js?v=22"></script>
+  <script src="js/mantenimiento.js?v=22"></script>
+  <script src="js/exportar.js?v=22"></script>
+  <script src="js/respaldo.js?v=22"></script>
+  <script src="js/app.js?v=22"></script>
 </body>
 </html>

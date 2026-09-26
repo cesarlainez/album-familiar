@@ -302,20 +302,27 @@
         const boton = e.target.querySelector('button[type="submit"]');
         boton.disabled = true;
         try {
-          await SupabaseServicio.entrarConClave($('candadoClave').value);
+          await AlbumBackend.entrarConClave($('candadoClave').value);
           cerrarCandado();
           aplicarModo(true);
           await cargarAlbum(); // relee ya autenticado
           toast('Modo edición activado');
         } catch (err) {
           console.error('[Candado] Fallo de inicio de sesión:', err);
+          const codigo = String((err && err.code) || '');
           const msg = String((err && err.message) || '');
           const el = $('candadoError');
-          if (/not confirmed/i.test(msg)) {
-            el.textContent =
-              'La cuenta existe pero no está confirmada. En Supabase: Authentication → Users → ⋮ → Confirm email.';
-          } else if (/invalid login/i.test(msg)) {
+          if (/wrong-password|invalid-credential|user-not-found|invalid-email/.test(codigo)) {
             el.textContent = 'Clave incorrecta. Intenta de nuevo.';
+          } else if (/too-many-requests/.test(codigo)) {
+            el.textContent = 'Demasiados intentos fallidos. Espera unos minutos y vuelve a probar.';
+          } else if (/network-request-failed/.test(codigo)) {
+            el.textContent = 'Sin conexión con el servidor. Revisa tu internet e intenta de nuevo.';
+          } else if (/configuration-not-found|operation-not-allowed/.test(codigo)) {
+            el.textContent =
+              'Falta activar el acceso por correo y contraseña en la consola de Firebase (Authentication -> Sign-in method).';
+          } else if (/api-key-not-valid|invalid-api-key/.test(codigo + msg)) {
+            el.textContent = 'Las credenciales de js/config.js no son válidas para este proyecto.';
           } else {
             el.textContent = 'No se pudo entrar: ' + (msg || 'error desconocido');
           }
@@ -328,7 +335,7 @@
 
       $('btnSesion').addEventListener('click', async () => {
         if (document.body.classList.contains('modo-edicion')) {
-          await SupabaseServicio.salir();
+          await AlbumBackend.salir();
           if (perfil.abierto) perfil.cerrar();
           aplicarModo(false);
           await cargarAlbum();
@@ -343,7 +350,7 @@
         if (e.key === 'Escape' && !$('candado').hidden) cerrarCandado();
       });
 
-      aplicarModo(!!(await SupabaseServicio.sesion()));
+      aplicarModo(!!(await AlbumBackend.sesion()));
     } else {
       /* Sin backend (modo maqueta local): todo editable, sin candado. */
       document.body.classList.add('modo-edicion');

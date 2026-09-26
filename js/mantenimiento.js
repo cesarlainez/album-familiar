@@ -290,7 +290,7 @@
       try {
         const blob = await this._redimensionar(archivo);
         const ruta = `${p.id_familia}/${p.id}/foto-${slot}-${Date.now()}.jpg`;
-        const url = await SupabaseServicio.subirFoto(ruta, blob);
+        const url = await AlbumBackend.subirFoto(ruta, blob);
         this.refs['foto' + slot].value = url;
         this.toast('Foto subida');
       } catch (e) {

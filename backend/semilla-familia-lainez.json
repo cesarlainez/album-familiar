@@ -1,0 +1,187 @@
+{
+  "formato": "album-familiar/respaldo",
+  "version": 1,
+  "generado": "2026-09-26T23:56:17.615Z",
+  "id_familia": "Familia_Lainez",
+  "etiqueta": "Familia Lainez",
+  "total_perfiles": 12,
+  "total_fotos": 0,
+  "perfiles": [
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": null,
+      "id_madre": null,
+      "id_pareja": [
+        "maria-atanasia"
+      ],
+      "id": "julio-cesar",
+      "nombre_completo": "Julio Cesar Lainez"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": null,
+      "id_madre": null,
+      "id_pareja": [
+        "julio-cesar"
+      ],
+      "id": "maria-atanasia",
+      "nombre_completo": "Maria Atanasia Otilia Alvarez Somoza"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": null,
+      "id_madre": null,
+      "id_pareja": [
+        "carlos-alfredo"
+      ],
+      "id": "yolanda",
+      "nombre_completo": "Yolanda del Carmen Jimenez Benitez de Lainez"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": "julio-cesar",
+      "id_madre": "maria-atanasia",
+      "id_pareja": [
+        "yolanda"
+      ],
+      "id": "carlos-alfredo",
+      "nombre_completo": "Carlos Alfredo Lainez"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": "julio-cesar",
+      "id_madre": "maria-atanasia",
+      "id_pareja": [],
+      "id": "julio-cesar-hijo",
+      "nombre_completo": "Julio Cesar Lainez (hijo)"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": "julio-cesar",
+      "id_madre": "maria-atanasia",
+      "id_pareja": [],
+      "id": "cesar-mauricio",
+      "nombre_completo": "Cesar Mauricio Lainez"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": "julio-cesar",
+      "id_madre": "maria-atanasia",
+      "id_pareja": [],
+      "id": "pepe",
+      "nombre_completo": "Pepe Lainez"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": "julio-cesar",
+      "id_madre": "maria-atanasia",
+      "id_pareja": [],
+      "id": "lourdes",
+      "nombre_completo": "Lourdes Lainez"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": "julio-cesar",
+      "id_madre": null,
+      "id_pareja": [],
+      "id": "guadalupe",
+      "nombre_completo": "Guadalupe Lainez"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": "julio-cesar",
+      "id_madre": null,
+      "id_pareja": [],
+      "id": "iris",
+      "nombre_completo": "Iris Lainez"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": "carlos-alfredo",
+      "id_madre": "yolanda",
+      "id_pareja": [],
+      "id": "carlos-g",
+      "nombre_completo": "Carlos G. Lainez Jimenez"
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": "carlos-alfredo",
+      "id_madre": "yolanda",
+      "id_pareja": [],
+      "id": "cesar-alberto",
+      "nombre_completo": "Cesar Alberto Lainez Jimenez"
+    }
+  ]
+}

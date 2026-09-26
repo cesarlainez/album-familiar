@@ -1,7 +1,7 @@
 # Álbum Familiar — "La Galería Nocturna"
 
 Plataforma SaaS multi-tenant para árboles genealógicos visuales. Frontend en
-HTML/CSS/JS puro (sin build step); backend en **Supabase** (Postgres + Storage + RLS).
+HTML/CSS/JS puro (sin build step); backend en **Firebase** (Firestore + Auth).
 
 El lienzo no es un organigrama jerárquico: es un **grafo libre (force-directed)**
 en espacio infinito. La familia crece hacia arriba (ancestros), a los lados
@@ -14,17 +14,21 @@ Album Familiar/
 ├─ index.html            Lienzo, modal y visor
 ├─ css/galeria.css       Estilo "Galería Nocturna"
 ├─ js/
-│  ├─ config.js          ← credenciales Supabase (RELLENAR)
+│  ├─ config.js          ← credenciales de Firebase (RELLENAR)
 │  ├─ servicios/
-│  │  └─ supabase.js     Cliente y consulta de perfiles
+│  │  ├─ firebase.js     Backend activo: Firestore + Auth
+│  │  └─ supabase.js     Backend anterior (dormido)
 │  ├─ datos.js           Capa de datos + layout + semilla de respaldo
 │  ├─ lienzo.js          Pan / zoom / nodos / hilos de luz
-│  ├─ perfil.js          Modal, carrusel (máx. 3), pantalla completa
+│  ├─ perfil.js          Modal, carrusel (máx. 4), pantalla completa
+│  ├─ respaldo.js        Copia de seguridad .zip (escribe y lee a mano)
 │  └─ app.js             Arranque
 └─ backend/
-   ├─ schema.sql         Tabla, índices, RLS y bucket de Storage
-   ├─ seed.sql           Semilla en SQL puro
-   ├─ seed.mjs           Semilla vía SDK (Node)
+   ├─ firestore.rules    Reglas de seguridad (pegar en la consola)
+   ├─ semilla-familia-lainez.json  Semilla restaurable desde la app
+   ├─ schema.sql         (Supabase) Tabla, índices, RLS y bucket
+   ├─ seed.sql           (Supabase) Semilla en SQL puro
+   ├─ seed.mjs           (Supabase) Semilla vía SDK (Node)
    ├─ package.json
    └─ .env.example
 ```
@@ -48,73 +52,73 @@ Y visita la URL que imprima (p. ej. `http://localhost:3000`).
 
 ---
 
-## Conectar el backend (Supabase) — 5 pasos
+## Conectar el backend (Firebase) — 5 pasos
+
+> **Por qué Firebase.** El proyecto gratuito de Supabase se pausa por
+> inactividad y, si sigue pausado, se borra. Así se perdió el álbum una vez.
+> Los proyectos de Firebase no se pausan por estar quietos. El servicio viejo
+> sigue en `js/servicios/supabase.js` por si algún día hay que volver.
 
 ### 1. Crear el proyecto
-1. Entra en <https://supabase.com> → **New project**.
-2. Anota la contraseña de la base de datos (la pide una vez).
+[console.firebase.google.com](https://console.firebase.google.com) -> **Agregar
+proyecto**. Google Analytics no hace falta: dile que no.
 
-### 2. Crear la tabla, el RLS y el bucket
-1. En el panel: **SQL Editor → New query**.
-2. Pega el contenido de [`backend/schema.sql`](backend/schema.sql) y pulsa **Run**.
+### 2. Crear la base de datos
+**Compilacion -> Firestore Database -> Crear base de datos**. Elige el modo de
+**producción** (las reglas de verdad las pegas en el paso 4) y la región más
+cercana (`nam5` o `us-central` sirven).
 
-Esto crea la tabla `perfiles`, sus índices, activa Row Level Security con una
-**política de lectura pública** (adecuada para esta iteración sin login) y crea
-el bucket `galeria` de Storage.
+No hace falta activar Cloud Storage: las fotos se guardan dentro de Firestore,
+cada una en su documento. Es a propósito — Storage exige plan de pago en los
+proyectos nuevos y este álbum tiene que vivir gratis.
 
-### 3. Sembrar la familia fundadora
-Inyecta los 12 perfiles reales de la "Familia_Lainez" (2 parejas, hijos comunes,
-2 medios hermanos). Solo se siembran **nombres y relaciones**; los demás campos
-quedan en blanco para completarse desde el CRUD. Elige **una** vía:
+### 3. Crear la clave familiar
+**Compilacion -> Authentication -> Comenzar -> Correo electrónico/contraseña**:
+actívalo y guarda. Luego, pestaña **Users -> Agregar usuario**, con el correo de
+`AUTH_EMAIL` (por defecto `cesarlainez@hotmail.com`) y la contraseña que será la
+clave que teclea la familia.
 
-- **SQL (rápido):** SQL Editor → pega [`backend/seed.sql`](backend/seed.sql) → **Run**.
-- **Node (programático):**
-  ```bash
-  cd backend
-  npm install
-  cp .env.example .env      # y rellena SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
-  npm run seed
-  ```
+### 4. Publicar las reglas de seguridad
+**Firestore Database -> pestaña Reglas** -> pega el contenido de
+[`backend/firestore.rules`](backend/firestore.rules) -> **Publicar**.
 
-### 4. Copiar las credenciales al frontend
-En el panel: **Project Settings → API** (o **Data API / API Keys**). Copia:
+Sin esto el álbum queda abierto de par en par: la configuración de `config.js`
+es pública por diseño, y son las reglas las que impiden que un desconocido
+borre el árbol.
 
-| Valor del panel Supabase        | Dónde va                                                    |
-|---------------------------------|-------------------------------------------------------------|
-| **Project URL**                 | `js/config.js` → `SUPABASE_URL` **y** `backend/.env` → `SUPABASE_URL` |
-| **anon / public key**           | `js/config.js` → `SUPABASE_ANON_KEY`                        |
-| **service_role key** (secreta)  | solo `backend/.env` → `SUPABASE_SERVICE_ROLE_KEY`           |
+### 5. Copiar las credenciales al frontend
+**Configuración del proyecto (rueda dentada) -> Tus apps -> icono web `</>`** ->
+registra la app (sin hosting) y copia el objeto `firebaseConfig`. Pégalo en el
+bloque `FIREBASE` de [`js/config.js`](js/config.js).
 
-Edita [`js/config.js`](js/config.js):
+Recarga la página. Si los valores siguen en `TU_...`, la app arranca en modo
+local con la semilla de prueba y no toca la nube.
 
-```js
-window.ALBUM_CONFIG = {
-  SUPABASE_URL: 'https://abcdxyz.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOi...',   // anon/public key
-  TENANT_POR_DEFECTO: 'Familia_Lainez',
-};
-```
-
-### 5. Recargar
-Vuelve a abrir la app. En la consola del navegador **no** debe aparecer el aviso
-de "uso semilla local": ahora los nodos vienen de Supabase.
+### Sembrar la familia
+Con la base vacía, entra en **modo edición** (botón *Iniciar*, clave del paso 3)
+y usa **Descargar -> Restaurar copia...** con
+[`backend/semilla-familia-lainez.json`](backend/semilla-familia-lainez.json):
+son los 12 nombres y sus relaciones, sin fotos ni fechas. Si ya tienes una copia
+de seguridad de verdad (`.zip`), restaura esa en su lugar.
 
 ---
 
 ## Copia de seguridad — hazla
 
-**La nube no es un respaldo.** Un proyecto gratuito de Supabase se pausa por
-inactividad y, si sigue pausado, acaba borrándose: con él se va todo lo que no
-esté en este repositorio. Ya pasó una vez.
+**La nube no es un respaldo.** El proyecto gratuito de Supabase que alojaba el
+álbum se pausó por inactividad y acabó borrándose: con él se fue todo lo que no
+estaba en este repositorio. Firebase no se pausa, pero una cuenta se puede
+perder, un borrado es un clic y ningún plan gratuito promete nada. Descarga la
+copia.
 
-En el menu **Descargar** hay dos entradas para esto:
+En el menú **Descargar** hay dos entradas para esto:
 
 - **Copia de seguridad (.zip)** — un único archivo con `album.json` (todos los
   perfiles, fechas, biografías y relaciones) y la carpeta `fotos/` con cada
   imagen descargada de la nube. Respalda siempre la familia completa, aunque
   estés viendo una rama filtrada.
-- **Restaurar copia…** (solo en modo edición) — vuelve a subir las fotos al
-  Storage y reescribe los perfiles. No borra a nadie: actualiza lo que existe
+- **Restaurar copia…** (solo en modo edición) — vuelve a guardar las fotos y
+  reescribe los perfiles. No borra a nadie: actualiza lo que existe
   y crea lo que falta, así que sirve tanto para recuperar como para mudarse a
   un proyecto nuevo.
 
@@ -122,28 +126,33 @@ El ZIP se escribe y se lee a mano en `js/respaldo.js`, sin librerías y sin
 comprimir (las fotos ya son JPEG). Se abre con cualquier descompresor, y las
 fotos quedan ahí como archivos normales aunque el código desaparezca.
 
-Guarda el .zip fuera de la maquina: correo, Drive, un disco externo. Hazlo cada
+Guarda el .zip fuera de la máquina: correo, Drive, un disco externo. Hazlo cada
 vez que agregues fotos o personas.
 
 ## Variables / claves — resumen
 
-| Clave                        | Pública | Dónde                       | Para qué                          |
-|------------------------------|:-------:|-----------------------------|-----------------------------------|
-| `SUPABASE_URL`               | sí      | `js/config.js`, `backend/.env` | Endpoint del proyecto          |
-| `SUPABASE_ANON_KEY`          | sí      | `js/config.js`              | Lectura desde el navegador (con RLS) |
-| `SUPABASE_SERVICE_ROLE_KEY`  | **NO**  | `backend/.env` únicamente   | Seed en tu máquina (salta RLS)    |
+| Clave                     | Pública | Dónde           | Para qué                             |
+|---------------------------|:-------:|-----------------|--------------------------------------|
+| `FIREBASE.apiKey`         | sí      | `js/config.js`  | Identifica al proyecto desde el navegador |
+| `FIREBASE.projectId`      | sí      | `js/config.js`  | Base de datos a la que se habla      |
+| Clave familiar            | **NO**  | en la cabeza    | Contraseña del usuario de Auth: abre el modo edición |
 
-- La `anon key` es pública **por diseño**: lo que protege los datos es el **RLS**,
-  no ocultarla.
-- La `service_role key` es secreta y está en `.gitignore` vía `backend/.env`.
+- La configuración de Firebase es pública **por diseño** — viaja en el código de
+  cualquier web que use Firebase. Lo que protege los datos son las **reglas** de
+  `backend/firestore.rules`, no esconderla.
+- La clave familiar no se guarda en ningún archivo del repositorio. Si se filtra,
+  se cambia en Authentication → Users → ⋮ → Restablecer contraseña.
 
 ---
 
 ## Cómo fluyen los datos
 
 1. `app.js` llama a `AlbumDatos.obtenerPerfiles('Familia_Lainez')`.
-2. `datos.js` decide: si hay credenciales → `SupabaseServicio` consulta
-   `perfiles WHERE id_familia = 'Familia_Lainez'`; si no, usa la semilla local.
+2. `datos.js` decide: si hay credenciales → `AlbumBackend` (hoy el servicio de
+   Firebase) lee `familias/Familia_Lainez/perfiles`; si no, usa la semilla local.
+   Las fotos viven en `familias/{familia}/fotos`, un documento por imagen, y el
+   servicio las cambia por su `data URL` al leer; el resto de la app solo ve
+   cadenas que puede poner en un `<img>`.
 3. `datos.js` calcula el **layout de grafo libre** (fuerzas: repulsión entre
    nodos + resortes en las aristas de parentesco) y `lienzo.js` dibuja los
    **hilos de luz** entre cada par, en cualquier dirección.
@@ -163,10 +172,10 @@ Cada perfil abierto muestra una barra de acciones:
   en edición para nombrarlo. "+ Hijo" cuelga de la pareja si existe.
 - **Eliminar** — con confirmación; limpia también las referencias de pareja.
 
-Funciona con backend (Supabase) y en modo local (los cambios viven en memoria
-durante la sesión). El `schema.sql` incluye políticas RLS de **escritura pública**
-para esta fase sin login; sustitúyelas por las políticas por-usuario (comentadas
-en el mismo archivo) al activar Auth.
+Funciona con backend (Firebase) y en modo local (los cambios se guardan en
+`localStorage`). Quien no tiene la clave ve el álbum pero no lo edita: la barra
+de acciones se oculta, y `backend/firestore.rules` lo impide de verdad en el
+servidor — lectura abierta, escritura solo con sesión.
 
 ### Medios hermanos y familias ensambladas
 
@@ -193,9 +202,10 @@ fuerzas reacomoda el grafo. No hay coordenadas fijas en el código.
 
 ---
 
-## Siguiente iteración (Auth)
+## Siguiente iteración (multi-familia)
 
-`backend/schema.sql` ya incluye, comentadas, las políticas RLS por usuario:
-cada cuenta llevará su `id_familia` en un *custom claim* del JWT y solo verá y
-editará su propia familia. Al activar Auth, se sustituye la política de lectura
-pública por esas dos.
+Hoy todas las personas cuelgan de `familias/{id_familia}`, y la clave familiar es
+una sola cuenta compartida: quien entra puede editar cualquier familia. Para
+alojar varias familias de verdad hace falta una cuenta por familia y reglas que
+comparen `request.auth` con el `id_familia` del documento. La estructura de
+Firestore ya está preparada para eso; solo faltan las reglas y el registro.

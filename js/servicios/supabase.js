@@ -149,5 +149,12 @@
     },
   };
 
+  SupabaseServicio.nombre = 'supabase';
   global.SupabaseServicio = SupabaseServicio;
+
+  /* Backend activo solo si se ha elegido y su SDK está cargado. */
+  const cfg = global.ALBUM_CONFIG || {};
+  if (cfg.BACKEND === 'supabase' && global.supabase && global.supabase.createClient) {
+    global.AlbumBackend = SupabaseServicio;
+  }
 })(window);

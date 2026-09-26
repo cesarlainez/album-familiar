@@ -308,7 +308,7 @@
           const ext = extensionDe(ruta);
           const blob = new Blob([datos], { type: tipoDe(ext) });
           const destino = idFamilia + '/' + p.id + '/restaurada-' + (i + 1) + '-' + Date.now() + '.' + ext;
-          galeria[i] = await global.SupabaseServicio.subirFoto(destino, blob);
+          galeria[i] = await global.AlbumBackend.subirFoto(destino, blob);
           subidas++;
         }
         p.galeria = galeria.filter(Boolean);

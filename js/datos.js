@@ -86,7 +86,7 @@
   /* ── Persistencia local (modo sin backend) ──────────────────────
      Sin Supabase, el CRUD trabajaría solo en memoria y se perdería al
      recargar. Para que las ediciones SOBREVIVAN al refresco, guardamos
-     una copia en localStorage. Cuando se conecta Supabase, esto no se usa
+     una copia en localStorage. Cuando hay backend, esto no se usa
      (la nube es la fuente de verdad). */
   const CLAVE_LS = 'albumFamiliar:datos:v1';
 
@@ -125,7 +125,7 @@
 
   function conBackend() {
     const cfg = global.ALBUM_CONFIG || {};
-    return cfg.hayBackend && global.SupabaseServicio ? global.SupabaseServicio : null;
+    return cfg.hayBackend && global.AlbumBackend ? global.AlbumBackend : null;
   }
 
   function nuevoId() {
@@ -150,7 +150,7 @@
         try {
           return await svc.obtenerPerfiles(idFamilia);
         } catch (e) {
-          console.error('[AlbumDatos] Error consultando Supabase.', e);
+          console.error('[AlbumDatos] Error consultando el backend.', e);
           return [];
         }
       }
@@ -236,7 +236,7 @@
           const fams = await svc.listarFamilias();
           if (fams && fams.length) return fams;
         } catch (e) {
-          console.error('[AlbumDatos] Error listando familias en Supabase.', e);
+          console.error('[AlbumDatos] Error listando familias en el backend.', e);
         }
       }
       const set = new Set(datosLocales.map((p) => p.id_familia));

@@ -1,0 +1,50 @@
+/* ══════════════════════════════════════════════════════════════
+   REGLAS DE SEGURIDAD — Firestore
+   ──────────────────────────────────────────────────────────────
+   Mismo trato que tenía el álbum con Supabase:
+
+     · Cualquiera puede LEER el álbum (es para enseñarlo a la familia).
+     · Solo quien inició sesión con la clave familiar puede ESCRIBIR.
+
+   La clave de config.js es pública por diseño; lo que de verdad
+   protege los datos son estas reglas. Sin ellas, cualquiera con la
+   URL del proyecto podría borrar el árbol entero.
+
+   Cómo aplicarlas: consola de Firebase → Firestore Database → pestaña
+   "Reglas" → pegar esto → Publicar.
+   ══════════════════════════════════════════════════════════════ */
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* Documento marcador de cada familia (solo sirve para listarlas). */
+    match /familias/{idFamilia} {
+      allow read: if true;
+      allow write: if request.auth != null;
+
+      /* Las personas del árbol. */
+      match /perfiles/{idPerfil} {
+        allow read: if true;
+        allow write: if request.auth != null;
+      }
+
+      /* Las fotografías, una por documento (data URL).
+         Se limita el tamaño para que nadie use el álbum de disco duro:
+         Firestore corta en 1 MiB y la app ya reduce antes de guardar. */
+      match /fotos/{idFoto} {
+        allow read: if true;
+        allow create, update: if request.auth != null
+                              && request.resource.data.datos is string
+                              && request.resource.data.datos.size() < 900000;
+        allow delete: if request.auth != null;
+      }
+    }
+
+    /* Todo lo demás, cerrado. */
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}
