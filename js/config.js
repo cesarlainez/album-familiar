@@ -27,14 +27,14 @@ window.ALBUM_CONFIG = {
   BACKEND: 'firebase',
 
   /* ── Firebase ───────────────────────────────────────────────
-     Pega aquí tal cual el objeto que te da la consola. */
+     Proyecto: albumfamiliar-101cf (registrado el 26/09/2026). */
   FIREBASE: {
-    apiKey: 'TU_API_KEY',
-    authDomain: 'TU_PROYECTO.firebaseapp.com',
-    projectId: 'TU_PROYECTO',
-    storageBucket: 'TU_PROYECTO.firebasestorage.app',
-    messagingSenderId: 'TU_SENDER_ID',
-    appId: 'TU_APP_ID',
+    apiKey: 'AIzaSyDIPH1GuaXbFxkRexkZp63FFtiUqnQM3Po',
+    authDomain: 'albumfamiliar-101cf.firebaseapp.com',
+    projectId: 'albumfamiliar-101cf',
+    storageBucket: 'albumfamiliar-101cf.firebasestorage.app',
+    messagingSenderId: '513248577246',
+    appId: '1:513248577246:web:f01a4ca8150dc1f1a0244f',
   },
 
   /* ── Supabase (backend anterior, en desuso) ───────────────── */
