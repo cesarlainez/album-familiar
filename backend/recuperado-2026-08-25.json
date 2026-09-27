@@ -1,12 +1,12 @@
 {
   "formato": "album-familiar/respaldo",
   "version": 1,
-  "generado": "2026-09-26T19:03:47",
+  "generado": "2026-09-26T20:54:32",
   "id_familia": "Familia_Lainez",
   "etiqueta": "Familia Lainez",
-  "total_perfiles": 59,
+  "total_perfiles": 62,
   "total_fotos": 0,
-  "origen": "Reconstruido a partir de la imagen exportada del album el 9 de agosto de 2026",
+  "origen": "Reconstruido a partir de las imagenes exportadas del album el 9 y el 25 de agosto de 2026",
   "perfiles": [
     {
       "id_familia": "Familia_Lainez",
@@ -662,7 +662,7 @@
     {
       "id_familia": "Familia_Lainez",
       "id": "irene-nieta",
-      "nombre_completo": "Irene",
+      "nombre_completo": "Irene Lainez",
       "fecha_nacimiento": null,
       "fecha_fallecimiento": null,
       "disciplina_artistica": "",
@@ -676,7 +676,7 @@
     {
       "id_familia": "Familia_Lainez",
       "id": "juanita",
-      "nombre_completo": "Juanita",
+      "nombre_completo": "Juanita Lainez",
       "fecha_nacimiento": null,
       "fecha_fallecimiento": null,
       "disciplina_artistica": "",
@@ -731,7 +731,9 @@
       "galeria": [],
       "id_padre": "carlos-alfredo",
       "id_madre": "yolanda",
-      "id_pareja": []
+      "id_pareja": [
+        "carolina-bonilla"
+      ]
     },
     {
       "id_familia": "Familia_Lainez",
@@ -745,6 +747,50 @@
       "galeria": [],
       "id_padre": null,
       "id_madre": null,
+      "id_pareja": [
+        "cesar-alberto"
+      ]
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "id": "lily-spencer",
+      "nombre_completo": "Lily Lainez Spencer",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": null,
+      "id_madre": "irene-nieta",
+      "id_pareja": []
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "id": "julieta-villeda",
+      "nombre_completo": "Julieta Villeda Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": null,
+      "id_madre": "juanita",
+      "id_pareja": []
+    },
+    {
+      "id_familia": "Familia_Lainez",
+      "id": "poy",
+      "nombre_completo": "Poy Lainez",
+      "fecha_nacimiento": null,
+      "fecha_fallecimiento": null,
+      "disciplina_artistica": "",
+      "obra_maestra": "",
+      "biografia": "",
+      "galeria": [],
+      "id_padre": null,
+      "id_madre": "juanita",
       "id_pareja": []
     },
     {
@@ -842,7 +888,7 @@
       "biografia": "",
       "galeria": [],
       "id_padre": "cesar-alberto",
-      "id_madre": null,
+      "id_madre": "carolina-bonilla",
       "id_pareja": []
     },
     {
