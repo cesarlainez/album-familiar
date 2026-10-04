@@ -22,6 +22,7 @@
     this.abierto = false;
     this.perfilActual = null;
     this.alAbrir = null; // hook opcional (lo usa mantenimiento.js)
+    this.alCambiarEstado = null; // (abierta: bool) — el lienzo pausa sus chispas
     this._cerrarTimer = null;
 
     this._conectarEventos();
@@ -44,6 +45,7 @@
     this._escalaIni = 0.28;
     r.carta.style.transform = 'translate(-50%, -50%) scale(' + this._escalaIni + ')';
     r.lienzo.classList.add('desenfocado');
+    if (typeof this.alCambiarEstado === 'function') this.alCambiarEstado(true);
 
     /* Reflow forzado para fijar el estado inicial y que la transición
        (expandir + girar) se reproduzca. No depende de requestAnimationFrame,
@@ -66,6 +68,7 @@
     r.carta.style.transform =
       'translate(-50%, -50%) scale(' + (this._escalaIni || 0.55) + ')';
     r.lienzo.classList.remove('desenfocado');
+    if (typeof this.alCambiarEstado === 'function') this.alCambiarEstado(false);
     this.abierto = false;
 
     this._cerrarTimer = setTimeout(() => {
@@ -78,7 +81,9 @@
   Perfil.prototype._pintarFrente = function (perfil) {
     const r = this.refs;
     r.frenteNombre.textContent = perfil.nombre_completo || '';
-    const portada = (perfil.galeria || []).filter(Boolean)[0] || '';
+    /* Mientras la foto grande llega, el frente usa la miniatura. */
+    const primera = (perfil.galeria || []).filter(Boolean)[0] || '';
+    const portada = primera && primera.indexOf('foto:') !== 0 ? primera : perfil.miniatura || '';
     if (portada) {
       r.frenteFoto.src = portada;
       r.frenteFoto.alt = 'Retrato de ' + (perfil.nombre_completo || '');
@@ -116,7 +121,9 @@
     pintar(r.obra, perfil.obra_maestra);
     pintar(r.bio, perfil.biografia);
 
-    this.galeria = (perfil.galeria || []).filter(Boolean).slice(0, MAX_FOTOS);
+    this.galeria = (perfil.galeria || [])
+      .filter((g) => g && g.indexOf('foto:') !== 0)
+      .slice(0, MAX_FOTOS);
     this.indice = 0;
     this._cargarGaleria(perfil);
   };

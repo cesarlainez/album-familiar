@@ -71,8 +71,26 @@
       alSeleccionar: (p) => {
         lienzo.centrarEn(p.id);
         perfil.abrir(p);
+        resolverFicha(p);
       },
     });
+
+    /* Las fotos grandes de una persona se piden al abrir SU ficha (como
+       mucho 4 lecturas), no al cargar el árbol. Si mientras tanto se cerró
+       o se abrió otra persona, el resultado se descarta. */
+    function resolverFicha(p) {
+      const be = global.AlbumBackend;
+      if (!be || !be.resolverPerfil || !(p.galeria || []).some((g) => /^foto:/.test(g))) return;
+      be.resolverPerfil(p).then((completo) => {
+        if (perfil.abierto && perfil.perfilActual && perfil.perfilActual.id === completo.id) {
+          perfil.refrescar(completo);
+        }
+      }).catch((e) => console.warn('[Fotos]', e));
+    }
+
+    /* Con la ficha abierta, las chispas del fondo se congelan: no se ven
+       tras el velo y competían por el procesador con la animación 3D. */
+    perfil.alCambiarEstado = (abierta) => lienzo.pausar('ficha', abierta);
 
     $('btnCentrar').addEventListener('click', () => lienzo.centrar());
 
@@ -111,8 +129,14 @@
       if (!ultimosPerfiles.length) return toast('No hay nada que respaldar todavía');
       toast('Preparando la copia…');
       try {
+        /* Las fotos ya no viajan con el árbol: se traen todas aquí, para
+           que la copia nunca salga sin ellas. */
+        const be = global.AlbumBackend;
+        const completos = be && be.resolverPerfiles && cfg.hayBackend
+          ? await be.resolverPerfiles(ultimosPerfiles)
+          : ultimosPerfiles;
         const r = await AlbumRespaldo.descargar(
-          ultimosPerfiles, familiaActual, etiquetaTenant(familiaActual), toast
+          completos, familiaActual, etiquetaTenant(familiaActual), toast
         );
         toast(
           'Copia lista: ' + r.perfiles + ' perfiles y ' + r.fotos + ' fotos' +
@@ -159,21 +183,23 @@
     });
 
     /* ── Filtro de rama: ver solo la línea de una persona ────── */
-    $('btnVerRama').addEventListener('click', async () => {
+    /* La rama se filtra de lo que ya está en memoria: no hace falta
+       volver a leer la familia entera de la nube. */
+    $('btnVerRama').addEventListener('click', () => {
       const p = perfil.perfilActual;
       if (!p) return;
       ramaDe = p.id;
       $('chipRamaTexto').textContent = 'Rama de ' + p.nombre_completo;
       $('chipRama').hidden = false;
       perfil.cerrar();
-      await recargar();
+      pintar();
       toast('Mostrando solo su rama');
     });
 
-    $('chipRamaQuitar').addEventListener('click', async () => {
+    $('chipRamaQuitar').addEventListener('click', () => {
       ramaDe = null;
       $('chipRama').hidden = true;
-      await recargar();
+      pintar();
       toast('Árbol completo');
     });
 
@@ -186,9 +212,28 @@
     let ramaDe = null; // id de la persona cuya rama se está viendo
 
     const recargar = async (opciones) => {
-      const todos = await AlbumDatos.obtenerPerfiles(familiaActual);
+      let todos;
+      try {
+        todos = await AlbumDatos.obtenerPerfiles(familiaActual);
+      } catch (err) {
+        /* Sin datos no se dibuja un árbol vacío invitando a "agregar la
+           primera persona": el árbol existe, solo no se pudo leer. */
+        console.error('[Cargar]', err);
+        $('lienzoVacioTitulo').textContent = 'No se pudo cargar el álbum. Revisa tu conexión y recarga la página.';
+        document.body.classList.add('error-carga');
+        $('lienzoVacio').hidden = ultimosPerfiles.length !== 0;
+        toast('No se pudo cargar el álbum');
+        return ultimosPerfiles;
+      }
+      document.body.classList.remove('error-carga');
+      $('lienzoVacioTitulo').textContent = 'Esta familia aún no tiene perfiles';
       ultimosPerfiles = todos;
+      pintar(opciones);
+      return todos;
+    };
 
+    function pintar(opciones) {
+      const todos = ultimosPerfiles;
       let lista = todos;
       if (ramaDe) {
         const ids = AlbumDatos.calcularRama(todos, ramaDe);
@@ -203,8 +248,7 @@
       perfilesDibujados = lista;
       lienzo.dibujar(lista, opciones);
       $('lienzoVacio').hidden = lista.length !== 0;
-      return todos;
-    };
+    }
 
     const mantenimiento = new Mantenimiento({
       perfil,
@@ -292,6 +336,10 @@
       $('candadoClave').value = '';
     };
 
+    /* El árbol se pide YA, en paralelo con la comprobación de sesión:
+       antes esperaba a Auth y eso retrasaba el primer dibujo. */
+    const carga = cargarAlbum();
+
     if (cfg.hayBackend && cfg.PROTEGER_CON_CLAVE) {
       $('candado')
         .querySelectorAll('[data-cerrar-candado]')
@@ -304,8 +352,7 @@
         try {
           await AlbumBackend.entrarConClave($('candadoClave').value);
           cerrarCandado();
-          aplicarModo(true);
-          await cargarAlbum(); // relee ya autenticado
+          aplicarModo(true); // la lectura es pública: no hace falta releer
           toast('Modo edición activado');
         } catch (err) {
           console.error('[Candado] Fallo de inicio de sesión:', err);
@@ -338,7 +385,6 @@
           await AlbumBackend.salir();
           if (perfil.abierto) perfil.cerrar();
           aplicarModo(false);
-          await cargarAlbum();
           toast('Modo solo lectura');
         } else {
           $('candado').hidden = false;
@@ -356,6 +402,6 @@
       document.body.classList.add('modo-edicion');
     }
 
-    await cargarAlbum();
+    await carga;
   });
 })(window);

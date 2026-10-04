@@ -207,7 +207,14 @@
      *  Devuelve { perfiles, fotos, fallidas }. */
     async descargar(perfiles, idFamilia, etiqueta, avisar) {
       const aviso = avisar || function () {};
-      const lista = (perfiles || []).map((p) => Object.assign({}, p));
+      /* Las miniaturas se regeneran al restaurar: el album.json v1 no las
+         lleva, así el formato sigue siendo el mismo de siempre. */
+      const lista = (perfiles || []).map((p) => {
+        const copia = Object.assign({}, p);
+        delete copia.miniatura;
+        delete copia.miniatura_de;
+        return copia;
+      });
       const entradas = [];
       const usados = new Set();
       let fotos = 0;

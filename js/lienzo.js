@@ -35,6 +35,7 @@
   /* Alto del marco de la fotografía; el ancla del hilo sale de su borde */
   const NODO_ALTO = 228;
   const NODO_ANCHO = 168;
+  const ALTURA_FILA = 380; // separación entre generaciones (= ALTURA_NIVEL del layout)
 
   function Lienzo(opciones) {
     this.contenedor = opciones.contenedor;
@@ -54,6 +55,7 @@
 
     this._arrastre = null;
     this._gesto = null;
+    this._pausas = new Set();
     this._punteros = new Map();
     this._distanciaPinza = 0;
 
@@ -70,6 +72,10 @@
        Cualquier perfil nuevo en la BD se coloca solo, sin tocar código. */
     AlbumDatos.calcularDisposicion(perfiles);
     this._bbox = this._calcularBBox();
+    /* La cascada de entrada solo en el primer dibujo: tras cada guardado
+       el árbol debe estar ahí al instante, no volver a encenderse. */
+    this.contenedor.classList.toggle('sin-entrada', this._yaDibujado === true);
+    this._yaDibujado = true;
     this._dibujarNodos();
     this._dibujarConexiones();
     /* recentrar por defecto; tras un cambio del CRUD se conserva la vista
@@ -102,42 +108,61 @@
     return this._esMovil() ? ESCALA_MIN_MOVIL : ESCALA_MIN;
   };
 
-  Lienzo.prototype._dibujarNodos = function () {
-    this.capaNodos.innerHTML = '';
-    this.elementosNodo.clear();
+  /** Retraso de entrada por GENERACIÓN, no por persona: con 62 personas
+   *  el retraso por nodo hacía aparecer el último a los 11 s. */
+  Lienzo.prototype._retrasoFila = function (y, base) {
+    const fila = this._bbox ? Math.round((y - this._bbox.minY - NODO_ALTO / 2) / ALTURA_FILA) : 0;
+    return base + Math.max(0, fila) * 150;
+  };
 
-    this.perfiles.forEach((perfil, i) => {
+  Lienzo.prototype._dibujarNodos = function () {
+    this.capaNodos.textContent = '';
+    this.elementosNodo.clear();
+    const lote = document.createDocumentFragment();
+
+    const crear = (etiqueta, clase, texto) => {
+      const el = document.createElement(etiqueta);
+      el.className = clase;
+      if (texto != null) el.textContent = texto;
+      return el;
+    };
+
+    this.perfiles.forEach((perfil) => {
       const pos = AlbumDatos.posicionDe(perfil.id);
 
       const nodo = document.createElement('article');
       nodo.className = 'nodo';
       nodo.style.left = pos.x + 'px';
       nodo.style.top = pos.y + 'px';
-      nodo.style.setProperty('--retraso', 260 + i * 160 + 'ms');
+      nodo.style.setProperty('--retraso', this._retrasoFila(pos.y, 200) + 'ms');
       nodo.tabIndex = 0;
       nodo.setAttribute('role', 'button');
       nodo.setAttribute('aria-label', `Abrir el perfil de ${perfil.nombre_completo}`);
       nodo.dataset.id = perfil.id;
 
-      const esc = (s) =>
-        String(s == null ? '' : s).replace(/[&<>"]/g, (c) =>
-          ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])
-        );
-      const portada = (perfil.galeria && perfil.galeria[0]) || '';
-      const nombre = esc(perfil.nombre_completo);
-      const visual = portada
-        ? `<img class="nodo__foto" src="${esc(portada)}" alt="Retrato de ${nombre}" draggable="false" />`
-        : `<div class="nodo__placeholder">${esc(AlbumDatos.iniciales(perfil.nombre_completo))}</div>`;
-
-      nodo.innerHTML = `
-        <div class="nodo__marco">
-          ${visual}
-          <div class="nodo__halo"></div>
-        </div>
-        <div class="nodo__pie">
-          <h2 class="nodo__nombre">${nombre}</h2>
-          <p class="nodo__disciplina">${esc(perfil.disciplina_artistica || '')}</p>
-        </div>`;
+      /* Elementos creados por propiedades, no con innerHTML: una foto en
+         data URL son ~700 KB de texto que el parser HTML tenía que leer
+         entero; asignada a img.src no pasa por él. La tarjeta usa la
+         miniatura si existe; una foto aún sin resolver ("foto:id") se
+         muestra con iniciales hasta que llegue. */
+      const marco = crear('div', 'nodo__marco');
+      const portada = perfil.miniatura || (perfil.galeria && perfil.galeria[0]) || '';
+      if (portada && portada.indexOf('foto:') !== 0) {
+        const img = crear('img', 'nodo__foto');
+        img.alt = 'Retrato de ' + perfil.nombre_completo;
+        img.draggable = false;
+        img.decoding = 'async';
+        img.src = portada;
+        marco.appendChild(img);
+      } else {
+        marco.appendChild(crear('div', 'nodo__placeholder', AlbumDatos.iniciales(perfil.nombre_completo)));
+      }
+      marco.appendChild(crear('div', 'nodo__halo'));
+      const pie = crear('div', 'nodo__pie');
+      pie.appendChild(crear('h2', 'nodo__nombre', perfil.nombre_completo));
+      pie.appendChild(crear('p', 'nodo__disciplina', perfil.disciplina_artistica || ''));
+      nodo.appendChild(marco);
+      nodo.appendChild(pie);
 
       /* El clic no se escucha aquí: el contenedor captura el puntero al
          arrastrar y el pointerup nunca llegaría al nodo. Se resuelve en
@@ -149,14 +174,18 @@
         }
       });
 
-      this.capaNodos.appendChild(nodo);
+      lote.appendChild(nodo);
       this.elementosNodo.set(perfil.id, nodo);
     });
+    this.capaNodos.appendChild(lote);
   };
 
   Lienzo.prototype._dibujarConexiones = function () {
     const NS = 'http://www.w3.org/2000/svg';
-    this.capaHilos.innerHTML = '';
+    this.capaHilos.textContent = '';
+    const lote = document.createDocumentFragment();
+    /* Con "reducir movimiento" no hay chispas: son animación pura. */
+    const conChispas = !(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
     /* Ancla en coordenadas del SVG. ANCLA_Y sube el punto hasta el centro
        de la fotografía (el nodo está centrado incluyendo su pie de texto). */
@@ -178,8 +207,8 @@
       const lazo = document.createElementNS(NS, 'path');
       lazo.setAttribute('class', 'lazo');
       lazo.setAttribute('d', `M ${A.x} ${A.y} L ${B.x} ${B.y}`);
-      lazo.style.animationDelay = 700 + i * 160 + 'ms';
-      this.capaHilos.appendChild(lazo);
+      lazo.style.animationDelay = this._retrasoFila(A.y - SVG_OFFSET - ANCLA_Y, 500) + 'ms';
+      lote.appendChild(lazo);
 
       /* Punto de unión: nudo de luz en el centro del matrimonio */
       const nudo = document.createElementNS(NS, 'circle');
@@ -187,8 +216,8 @@
       nudo.setAttribute('cx', mx);
       nudo.setAttribute('cy', my);
       nudo.setAttribute('r', '3.4');
-      nudo.style.animationDelay = 900 + i * 160 + 'ms';
-      this.capaHilos.appendChild(nudo);
+      nudo.style.animationDelay = this._retrasoFila(A.y - SVG_OFFSET - ANCLA_Y, 700) + 'ms';
+      lote.appendChild(nudo);
     });
 
     /* ── 2) Filiaciones: hilo de luz sólido hacia cada hijo ──────────
@@ -224,29 +253,57 @@
       const cy = my + (dx / largoRecta) * arqueo;
       const d = `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
 
+      /* Halo: un segundo trazo ancho y tenue. Sustituye al filtro de
+         desenfoque, que obligaba a rasterizar ~30 Mpx en cada cuadro. */
+      const retraso = this._retrasoFila(destino.y - SVG_OFFSET - ANCLA_Y, 50) + 'ms';
+      const halo = document.createElementNS(NS, 'path');
+      halo.setAttribute('class', 'hilo-halo');
+      halo.setAttribute('d', d);
+      halo.setAttribute('pathLength', '1');
+      halo.style.animationDelay = retraso;
+      lote.appendChild(halo);
+
+      /* El hilo se "enciende" dibujándose de progenitor a descendiente.
+         pathLength=1 normaliza el largo: sin getTotalLength(), que forzaba
+         a calcular la geometría de cada curva en pleno dibujo. */
       const trazo = document.createElementNS(NS, 'path');
       trazo.setAttribute('class', 'hilo');
       trazo.setAttribute('d', d);
-      this.capaHilos.appendChild(trazo);
+      trazo.setAttribute('pathLength', '1');
+      trazo.style.animationDelay = retraso;
+      lote.appendChild(trazo);
 
-      /* El hilo se "enciende" dibujándose de progenitor a descendiente */
-      const largo = trazo.getTotalLength();
-      trazo.style.strokeDasharray = largo;
-      trazo.style.setProperty('--largo', largo);
-      trazo.style.animationDelay = 420 + i * 200 + 'ms';
-
-      /* Chispa que recorre el hilo: la luz viajando entre generaciones */
-      const chispa = document.createElementNS(NS, 'circle');
-      chispa.setAttribute('class', 'chispa');
-      chispa.setAttribute('r', '1.9');
-      const motion = document.createElementNS(NS, 'animateMotion');
-      motion.setAttribute('dur', 5 + (i % 3) + 's');
-      motion.setAttribute('repeatCount', 'indefinite');
-      motion.setAttribute('path', d);
-      motion.setAttribute('begin', i * 1.3 + 's');
-      chispa.appendChild(motion);
-      this.capaHilos.appendChild(chispa);
+      /* Chispa que recorre el hilo: la luz viajando entre generaciones.
+         Recorridos finitos: en reposo el lienzo queda quieto y el celular
+         no gasta batería en 48 animaciones eternas. */
+      if (conChispas) {
+        const chispa = document.createElementNS(NS, 'circle');
+        chispa.setAttribute('class', 'chispa');
+        chispa.setAttribute('r', '1.9');
+        const motion = document.createElementNS(NS, 'animateMotion');
+        motion.setAttribute('dur', 5 + (i % 3) + 's');
+        motion.setAttribute('repeatCount', '3');
+        motion.setAttribute('path', d);
+        motion.setAttribute('begin', (i % 8) * 0.7 + 's');
+        chispa.appendChild(motion);
+        lote.appendChild(chispa);
+      }
     });
+    this.capaHilos.appendChild(lote);
+  };
+
+  /* ── Pausa de las chispas ───────────────────────────────────
+     Un conjunto de MOTIVOS en vez de pares pausa/reanuda: mientras haya
+     uno (gesto, rueda, ficha abierta, pestaña oculta) las animaciones SMIL
+     quedan congeladas; así el pan y el zoom no compiten con ellas por el
+     hilo principal, y el orden de los eventos deja de importar. */
+  Lienzo.prototype.pausar = function (motivo, activo) {
+    if (activo) this._pausas.add(motivo);
+    else this._pausas.delete(motivo);
+    const svg = this.capaHilos.ownerSVGElement;
+    if (!svg || !svg.pauseAnimations) return;
+    if (this._pausas.size) svg.pauseAnimations();
+    else svg.unpauseAnimations();
   };
 
   /* ── Transform ───────────────────────────────────────────── */
@@ -424,6 +481,7 @@
         const nodo = e.target.closest ? e.target.closest('.nodo') : null;
         this._gesto = { nodo, x: e.clientX, y: e.clientY };
         c.classList.add('arrastrando');
+        this.pausar('gesto', true);
       } else if (this._punteros.size === 2) {
         this._gesto = null;
         this._arrastre = null;
@@ -471,6 +529,7 @@
       if (this._punteros.size === 0) {
         this._arrastre = null;
         c.classList.remove('arrastrando');
+        this.pausar('gesto', false);
         this._asegurarContenidoVisible();
       }
     };
@@ -483,9 +542,13 @@
       (e) => {
         e.preventDefault();
         const factor = Math.exp(-e.deltaY * SENSIBILIDAD_RUEDA);
+        this.pausar('rueda', true);
         this.zoomEn(this.escala * factor, { x: e.clientX, y: e.clientY });
         clearTimeout(ruedaTimer);
-        ruedaTimer = setTimeout(() => this._asegurarContenidoVisible(), 250);
+        ruedaTimer = setTimeout(() => {
+          this.pausar('rueda', false);
+          this._asegurarContenidoVisible();
+        }, 250);
       },
       { passive: false }
     );
@@ -498,6 +561,7 @@
     });
 
     window.addEventListener('resize', () => this.centrar(false));
+    document.addEventListener('visibilitychange', () => this.pausar('oculto', document.hidden));
   };
 
   Lienzo.prototype._distanciaEntrePunteros = function () {

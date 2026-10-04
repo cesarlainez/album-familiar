@@ -120,6 +120,8 @@
 
   /* Disposición calculada (id -> {x, y}). Se rellena en cada dibujo. */
   let _posiciones = new Map();
+  let _huella = null; // estructura del último layout calculado
+  let _memo = null; // sus posiciones
 
   /* ── Utilidades internas ─────────────────────────────────── */
 
@@ -147,12 +149,7 @@
            vacía o falla, se muestra vacío. Caer a la semilla local aquí
            enseñaría datos ficticios como si fueran reales (p. ej. a un
            visitante sin clave si el RLS no le deja leer). */
-        try {
-          return await svc.obtenerPerfiles(idFamilia);
-        } catch (e) {
-          console.error('[AlbumDatos] Error consultando el backend.', e);
-          return [];
-        }
+        return await svc.obtenerPerfiles(idFamilia);
       }
       return datosLocales.filter((p) => p.id_familia === idFamilia);
     },
@@ -302,7 +299,24 @@
 
     /* ── Layout de grafo libre (force-directed) ────────────── */
 
-    calcularDisposicion(perfiles) {
+    calcularDisposicion(entrada) {
+      /* Orden canónico por id: la física depende del orden de entrada, y
+         ese orden venía de la consulta (por fecha de nacimiento). Poner una
+         fecha a una sola persona reacomodaba hasta 60 de 62 tarjetas. Así,
+         solo un cambio de ESTRUCTURA (personas o lazos) mueve el árbol. */
+      const perfiles = (entrada || []).slice().sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+      /* Misma estructura → mismas posiciones: editar un nombre, una fecha o
+         una foto no vuelve a correr la simulación. */
+      const huella = perfiles
+        .map((p) => p.id + '|' + (p.id_padre || '') + '|' + (p.id_madre || '') + '|' +
+          (Array.isArray(p.id_pareja) ? p.id_pareja.slice().sort().join(',') : ''))
+        .join(';');
+      if (huella === _huella && _memo) {
+        _posiciones = _memo;
+        return _memo;
+      }
+
       const N = perfiles.length;
       const pos = new Map();
       if (N === 0) {
@@ -351,7 +365,12 @@
         }
       }
       /* Ningún par del bloque se repele: deben poder tocarse. */
-      const sinRepulsion = new Set(bloques.map(([a, b]) => a + '_' + b));
+      /* Matriz N×N en vez de un Set de claves de texto: la comprobación
+         está en el bucle interno de la repulsión (N²/2 × 900 veces) y
+         construir el string 'i_j' en cada vuelta se llevaba el 64 % del
+         tiempo del layout. Misma semántica exacta: solo la celda [a][b]. */
+      const sinRepulsion = new Uint8Array(N * N);
+      for (const [a, b] of bloques) sinRepulsion[a * N + b] = 1;
       const K_BLOQUE = 0.22; // atracción fuerte para los bloques blandos
 
       /* Colocación inicial en espiral áurea (determinista, sin azar). */
@@ -424,7 +443,7 @@
 
         for (let i = 0; i < N; i++) {
           for (let j = i + 1; j < N; j++) {
-            if (sinRepulsion.has(i + '_' + j)) continue;
+            if (sinRepulsion[i * N + j]) continue;
             let dx = px[i] - px[j];
             let dy = py[i] - py[j];
             let d2 = dx * dx + dy * dy || 0.01;
@@ -576,6 +595,8 @@
 
       perfiles.forEach((p, i) => pos.set(p.id, { x: px[i], y: py[i] }));
       _posiciones = pos;
+      _huella = huella;
+      _memo = pos;
       return pos;
     },
 

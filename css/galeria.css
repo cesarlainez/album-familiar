@@ -314,7 +314,9 @@ body:not(.modo-edicion) .ficha-acciones,
 body:not(.modo-edicion) #btnPrimeraPersona,
 body:not(.modo-edicion) .lienzo-vacio__nota,
 body:not(.modo-edicion) .btn-subir,
-body:not(.modo-edicion) .solo-edicion {
+body:not(.modo-edicion) .solo-edicion,
+body.error-carga #btnPrimeraPersona,
+body.error-carga .lienzo-vacio__nota {
   display: none !important;
 }
 
@@ -489,25 +491,40 @@ body:not(.modo-edicion) .solo-edicion {
   pointer-events: none;
 }
 
-.hilo {
+/* El estado FINAL vive en la regla base y la animación solo cubre la
+   entrada (fill-mode: backwards). Con "forwards", cada elemento animado
+   quedaba como capa propia del compositor para siempre: 184 capas. */
+.hilo,
+.hilo-halo {
   fill: none;
-  stroke: url(#gradHilo);
-  stroke-width: 1.2;
   stroke-linecap: round;
-  filter: url(#brilloHilo);
-  opacity: 0;
-  animation: encender var(--lento) var(--curva) forwards;
+  animation: encender var(--lento) var(--curva) backwards;
 }
 
+.hilo {
+  stroke: url(#gradHilo);
+  stroke-width: 1.2;
+}
+
+/* El brillo del hilo: trazo ancho y tenue en vez de un filtro de
+   desenfoque (que rasterizaba ~30 Mpx de regiones en cada cuadro). */
+.hilo-halo {
+  stroke: var(--luz-calida);
+  stroke-width: 4;
+  opacity: 0.12;
+}
+
+/* El trazo punteado existe SOLO durante la animación (pathLength=1 en
+   el SVG): al terminar, el hilo queda sólido aunque algún navegador no
+   entendiera pathLength. */
 @keyframes encender {
-  from { opacity: 0; stroke-dashoffset: var(--largo); }
-  to   { opacity: 1; stroke-dashoffset: 0; }
+  from { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  to   { stroke-dasharray: 1; stroke-dashoffset: 0; }
 }
 
 /* Partícula que recorre el hilo: la "luz" viajando entre generaciones */
 .chispa {
   fill: var(--luz-calida);
-  filter: url(#brilloHilo);
   opacity: 0.7;
 }
 
@@ -519,30 +536,27 @@ body:not(.modo-edicion) .solo-edicion {
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-dasharray: 1 8;
-  filter: url(#brilloHilo);
-  opacity: 0;
-  animation: aparecerLazo var(--lento) var(--curva) forwards;
+  opacity: 0.85;
+  animation: aparecer var(--lento) var(--curva) backwards;
 }
 
-@keyframes aparecerLazo {
+@keyframes aparecer {
   from { opacity: 0; }
-  to   { opacity: 0.85; }
 }
 
 /* Punto de unión: nudo de luz en el centro del matrimonio.
    Es también el origen de los hilos hacia los hijos. */
 .lazo-union {
   fill: var(--luz-calida);
-  filter: url(#brilloHilo);
-  opacity: 0;
-  animation: latirNudo 3.4s ease-in-out infinite both;
+  opacity: 0.9;
+  /* Aparece tras su lazo y late dos veces; luego queda quieto. Un latido
+     infinito mantenía 11 capas animándose sin descanso. */
+  animation: aparecer var(--lento) var(--curva) backwards,
+             latirNudo 3.4s ease-in-out 2;
 }
 
-/* Late suavemente en bucle (nunca se apaga del todo). El animation-delay
-   inline lo hace aparecer justo tras encenderse los lazos. */
 @keyframes latirNudo {
-  0%, 100% { opacity: 0.6; }
-  50%      { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
 /* ── Nodos (perfiles) ────────────────────────────────────────── */
@@ -557,8 +571,7 @@ body:not(.modo-edicion) .solo-edicion {
   transform: translate(-50%, -50%);
   cursor: pointer;
   user-select: none;
-  opacity: 0;
-  animation: revelar var(--lento) var(--curva) forwards;
+  animation: revelar var(--lento) var(--curva) backwards;
   animation-delay: var(--retraso, 0ms);
   transition: transform var(--medio) var(--curva);
 }
@@ -575,9 +588,20 @@ body:not(.modo-edicion) .solo-edicion {
   }
 }
 
+/* Solo opacidad: el desenfoque de entrada forzaba a repintar cada
+   tarjeta con filtro durante toda la cascada. */
 @keyframes revelar {
-  from { opacity: 0; filter: blur(12px); }
-  to   { opacity: 1; filter: blur(0); }
+  from { opacity: 0; }
+}
+
+/* Tras el primer dibujo (p. ej. al guardar una edición) el árbol aparece
+   al instante: la regla base ya es el estado final. */
+.sin-entrada .nodo,
+.sin-entrada .hilo,
+.sin-entrada .hilo-halo,
+.sin-entrada .lazo,
+.sin-entrada .lazo-union {
+  animation: none;
 }
 
 .nodo__marco {
@@ -1432,6 +1456,9 @@ select.campo__input option {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  .grano { animation: none; }
 }

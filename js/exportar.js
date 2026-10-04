@@ -180,7 +180,10 @@
 
     /* fotos (en paralelo) */
     const imagenes = await Promise.all(
-      perfiles.map((p) => cargarImagen((p.galeria || []).filter(Boolean)[0]))
+      perfiles.map((p) => {
+        const primera = (p.galeria || []).filter(Boolean)[0];
+        return cargarImagen(p.miniatura || (primera && primera.indexOf('foto:') !== 0 ? primera : null));
+      })
     );
 
     /* nodos */

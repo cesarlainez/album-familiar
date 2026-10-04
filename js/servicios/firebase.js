@@ -64,18 +64,24 @@
     _fotoDeUrl.set(url, fotoId);
   }
 
-  /** Cambia los ids guardados por sus data URL (lectura). */
-  async function hidratar(idFamilia, perfiles) {
-    const pendientes = new Set();
-    for (const p of perfiles) {
-      for (const g of p.galeria || []) {
-        if (esRefFoto(g) && !_urlDeFoto.has(idFoto(g))) pendientes.add(idFoto(g));
-      }
-    }
-    /* Las fotos se piden en paralelo: son documentos independientes y
-       esperarlas en fila haría el arranque tan lento como fotos haya. */
+  /** Cambia por su data URL solo las fotos que YA están en memoria y deja
+   *  el resto como "foto:{id}". El árbol se pinta sin esperar a ninguna
+   *  foto: antes se descargaban TODAS (hasta 4 por persona, ~0,5 MB cada
+   *  una) antes del primer dibujo, aunque la tarjeta usa una miniatura. */
+  function hidratarDeMemoria(perfiles) {
+    return perfiles.map((p) => {
+      const galeria = (p.galeria || [])
+        .filter(Boolean)
+        .map((g) => (esRefFoto(g) && _urlDeFoto.has(idFoto(g)) ? _urlDeFoto.get(idFoto(g)) : g));
+      return Object.assign({}, p, { galeria: galeria });
+    });
+  }
+
+  /** Descarga las fotos que falten (en paralelo) y las deja en memoria. */
+  async function traerFotos(idFamilia, refs) {
+    const faltan = [...new Set(refs.filter(esRefFoto).map(idFoto))].filter((f) => !_urlDeFoto.has(f));
     await Promise.all(
-      [...pendientes].map(async (fotoId) => {
+      faltan.map(async (fotoId) => {
         try {
           const doc = await colFotos(idFamilia).doc(fotoId).get();
           if (doc.exists && doc.data().datos) recordar(fotoId, doc.data().datos);
@@ -84,13 +90,57 @@
         }
       })
     );
+  }
 
-    return perfiles.map((p) => {
-      const galeria = (p.galeria || [])
-        .map((g) => (esRefFoto(g) ? _urlDeFoto.get(idFoto(g)) || '' : g))
-        .filter(Boolean);
-      return Object.assign({}, p, { galeria: galeria });
+  /* ── Miniatura de la tarjeta ────────────────────────────────
+     Recorte "cover" de 336×456 (el doble de la tarjeta, nítido en
+     pantallas densas) en JPEG: ~20–30 KB frente a ~500–700 KB de la foto.
+     Vive dentro del propio perfil, así que pintar el árbol completo no
+     cuesta ni una lectura extra. */
+  const MINI_W = 336;
+  const MINI_H = 456;
+
+  function cargarImagenDe(url) {
+    return new Promise((resolver, rechazar) => {
+      const img = new Image();
+      img.onload = () => resolver(img);
+      img.onerror = () => rechazar(new Error('No se pudo leer la foto para la miniatura'));
+      img.src = url;
     });
+  }
+
+  async function crearMiniatura(dataUrl) {
+    const img = await cargarImagenDe(dataUrl);
+    const escala = Math.max(MINI_W / img.naturalWidth, MINI_H / img.naturalHeight);
+    const w = img.naturalWidth * escala;
+    const h = img.naturalHeight * escala;
+    const lienzo = document.createElement('canvas');
+    lienzo.width = MINI_W;
+    lienzo.height = MINI_H;
+    lienzo.getContext('2d').drawImage(img, (MINI_W - w) / 2, (MINI_H - h) / 2, w, h);
+    return lienzo.toDataURL('image/jpeg', 0.75);
+  }
+
+  /** Campos de miniatura para una galería ya deshidratada ("foto:id").
+   *  Solo se recalcula si cambió la portada (miniatura_de). */
+  async function camposMiniatura(idFamilia, galeria, anterior) {
+    const portada = (galeria || []).filter(Boolean)[0] || null;
+    if (!portada) return { miniatura: null, miniatura_de: null };
+    if (anterior && anterior.miniatura && anterior.miniatura_de === portada) {
+      return { miniatura: anterior.miniatura, miniatura_de: portada };
+    }
+    let url = portada;
+    if (esRefFoto(portada)) {
+      await traerFotos(idFamilia, [portada]);
+      url = _urlDeFoto.get(idFoto(portada));
+    }
+    if (!url || !/^data:/.test(url)) return { miniatura: null, miniatura_de: null };
+    try {
+      return { miniatura: await crearMiniatura(url), miniatura_de: portada };
+    } catch (e) {
+      console.warn('[Firebase] No se pudo crear la miniatura:', e);
+      return { miniatura: null, miniatura_de: null };
+    }
   }
 
   const PREFIJO = 'foto:';
@@ -174,6 +224,8 @@
       id_padre: p.id_padre || null,
       id_madre: p.id_madre || null,
       id_pareja: Array.isArray(p.id_pareja) ? p.id_pareja : [],
+      miniatura: p.miniatura || null,
+      miniatura_de: p.miniatura_de || null,
     };
   }
 
@@ -223,7 +275,22 @@
       const captura = await colPerfiles(idFamilia).get();
       const perfiles = captura.docs.map((d) => fila(Object.assign({ id: d.id, id_familia: idFamilia }, d.data())));
       perfiles.sort((a, b) => String(a.fecha_nacimiento || '').localeCompare(String(b.fecha_nacimiento || '')));
-      return await hidratar(idFamilia, perfiles);
+      return hidratarDeMemoria(perfiles);
+    },
+
+    /** Devuelve una copia del perfil con TODAS sus fotos como data URL.
+     *  Se usa al abrir la ficha (máximo 4 lecturas, solo de esa persona). */
+    async resolverPerfil(perfil) {
+      await traerFotos(perfil.id_familia, perfil.galeria || []);
+      return hidratarDeMemoria([perfil])[0];
+    },
+
+    /** Lo mismo para muchos perfiles a la vez (copia de seguridad). */
+    async resolverPerfiles(perfiles) {
+      if (!perfiles.length) return [];
+      const idFamilia = perfiles[0].id_familia;
+      await traerFotos(idFamilia, [].concat(...perfiles.map((p) => p.galeria || [])));
+      return hidratarDeMemoria(perfiles);
     },
 
     /** Familias existentes. Requiere poder listar la colección raíz;
@@ -243,6 +310,7 @@
       const idFamilia = perfil.id_familia;
       const datos = fila(perfil);
       datos.galeria = await deshidratar(idFamilia, datos.galeria, perfil.id);
+      Object.assign(datos, await camposMiniatura(idFamilia, datos.galeria, null));
       /* El documento padre de la subcolección no existe por sí solo:
          se marca para que la familia aparezca al listar. */
       await bd().collection('familias').doc(idFamilia).set({ id: idFamilia }, { merge: true });
@@ -252,7 +320,11 @@
 
     async actualizar(idFamilia, id, cambios) {
       const datos = Object.assign({}, cambios);
-      if ('galeria' in datos) datos.galeria = await deshidratar(idFamilia, datos.galeria, id);
+      if ('galeria' in datos) {
+        datos.galeria = await deshidratar(idFamilia, datos.galeria, id);
+        const actual = await colPerfiles(idFamilia).doc(id).get();
+        Object.assign(datos, await camposMiniatura(idFamilia, datos.galeria, actual.exists ? actual.data() : null));
+      }
       delete datos.id;
       delete datos.id_familia;
       await colPerfiles(idFamilia).doc(id).set(datos, { merge: true });
@@ -276,14 +348,13 @@
       lote.delete(colPerfiles(idFamilia).doc(id));
 
       /* Sus fotos se van con el perfil: si no, quedan documentos huérfanos
-         ocupando la cuota para siempre, sin nadie que los muestre. */
-      const fotos = await colFotos(idFamilia).get();
+         ocupando la cuota para siempre, sin nadie que los muestre. Se piden
+         SOLO las suyas: leer la colección entera eran decenas de MB. */
+      const fotos = await colFotos(idFamilia).where('perfil', '==', id).get();
       fotos.docs.forEach((d) => {
-        if (d.data().perfil === id) {
-          lote.delete(d.ref);
-          const url = _urlDeFoto.get(d.id);
-          if (url) { _urlDeFoto.delete(d.id); _fotoDeUrl.delete(url); }
-        }
+        lote.delete(d.ref);
+        const url = _urlDeFoto.get(d.id);
+        if (url) { _urlDeFoto.delete(d.id); _fotoDeUrl.delete(url); }
       });
 
       await lote.commit();
@@ -300,6 +371,7 @@
       for (const p of perfiles) {
         const datos = fila(p);
         datos.galeria = await deshidratar(p.id_familia, datos.galeria, p.id);
+        Object.assign(datos, await camposMiniatura(p.id_familia, datos.galeria, null));
         preparados.push(datos);
       }
       for (let i = 0; i < preparados.length; i += 400) {
