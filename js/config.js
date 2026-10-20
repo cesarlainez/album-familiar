@@ -60,4 +60,8 @@ window.ALBUM_CONFIG = {
     cfg.BACKEND === 'supabase'
       ? !sinRellenar(cfg.SUPABASE_URL) && !sinRellenar(cfg.SUPABASE_ANON_KEY)
       : !sinRellenar(cfg.FIREBASE.apiKey) && !sinRellenar(cfg.FIREBASE.projectId);
+  /* ?modo=local → trabaja con los datos de prueba del navegador y NUNCA
+     toca la nube. Sirve para desarrollar y para las pruebas automáticas
+     sin arriesgar el álbum real. */
+  if (/[?&]modo=local(&|$)/.test(location.search)) cfg.hayBackend = false;
 })(window.ALBUM_CONFIG);

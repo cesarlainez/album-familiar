@@ -81,10 +81,15 @@
     function resolverFicha(p) {
       const be = global.AlbumBackend;
       if (!be || !be.resolverPerfil || !(p.galeria || []).some((g) => /^foto:/.test(g))) return;
-      be.resolverPerfil(p).then((completo) => {
-        if (perfil.abierto && perfil.perfilActual && perfil.perfilActual.id === completo.id) {
-          perfil.refrescar(completo);
-        }
+      const apertura = perfil.apertura;
+      be.resolverPerfil(p).then(() => {
+        /* Se resuelve la galería ACTUAL de la ficha (ya en memoria, sin red):
+           si se editó mientras tanto, manda lo editado, no la copia vieja. */
+        const actual = perfil.perfilActual;
+        if (!perfil.abierto || !actual || actual.id !== p.id || perfil.apertura !== apertura) return null;
+        return be.resolverPerfil(actual).then((r) => {
+          if (perfil.apertura === apertura) perfil.actualizarFotos(actual.id, r.galeria);
+        });
       }).catch((e) => console.warn('[Fotos]', e));
     }
 
@@ -171,7 +176,12 @@
         if (!seguir) return;
         toast('Restaurando…');
         const r = await AlbumRespaldo.restaurar(manifiesto, archivos, familiaActual, toast);
-        await recargar();
+        try {
+          await recargar();
+        } catch (e) {
+          global.alert('La copia se restauró, pero no se pudo volver a cargar el álbum: ' + e.message);
+          return;
+        }
         toast(
           'Restaurados ' + r.perfiles + ' perfiles y ' + r.fotos + ' fotos' +
           (r.sinSubir ? ' (' + r.sinSubir + ' fotos necesitan la nube)' : '')
@@ -222,8 +232,11 @@
         $('lienzoVacioTitulo').textContent = 'No se pudo cargar el álbum. Revisa tu conexión y recarga la página.';
         document.body.classList.add('error-carga');
         $('lienzoVacio').hidden = ultimosPerfiles.length !== 0;
-        toast('No se pudo cargar el álbum');
-        return ultimosPerfiles;
+        /* Se propaga: quien pidió la relectura (p. ej. tras guardar) debe
+           saber que la vista no está al día, en vez de anunciar éxito. */
+        const e = new Error('No se pudo cargar el álbum. Revisa tu conexión y recarga la página.');
+        e.causa = err;
+        throw e;
       }
       document.body.classList.remove('error-carga');
       $('lienzoVacioTitulo').textContent = 'Esta familia aún no tiene perfiles';
@@ -276,8 +289,12 @@
       familiaActual = id;
       $('tenantLabel').textContent = etiquetaTenant(id);
       if (perfil.abierto) perfil.cerrar();
-      await recargar();
-      await rellenarFamilias();
+      try {
+        await recargar();
+        await rellenarFamilias();
+      } catch (e) {
+        toast(e.message);
+      }
     }
 
     $('buscarFamilia').addEventListener('change', (e) => {
@@ -287,12 +304,24 @@
 
     /* ── Estado vacío: crear la primera persona de la familia ─── */
     $('btnPrimeraPersona').addEventListener('click', async () => {
-      const nuevo = await AlbumDatos.crear({
-        id_familia: familiaActual,
-        nombre_completo: 'Nueva persona',
-      });
-      const perfiles = await recargar();
-      await rellenarFamilias();
+      let nuevo;
+      try {
+        nuevo = await AlbumDatos.crear({
+          id_familia: familiaActual,
+          nombre_completo: 'Nueva persona',
+        });
+      } catch (e) {
+        global.alert('No se pudo crear la persona: ' + e.message);
+        return;
+      }
+      let perfiles;
+      try {
+        perfiles = await recargar();
+        await rellenarFamilias();
+      } catch (e) {
+        global.alert('Se creó la persona, pero no se pudo volver a cargar el álbum: ' + e.message);
+        return;
+      }
       const fresco = perfiles.find((p) => p.id === nuevo.id) || nuevo;
       perfil.abrir(fresco);
       mantenimiento.modoEdicion();
@@ -311,8 +340,12 @@
     }
 
     const cargarAlbum = async () => {
-      await recargar();
-      await rellenarFamilias();
+      try {
+        await recargar();
+        await rellenarFamilias();
+      } catch (e) {
+        toast(e.message);
+      }
     };
 
     /* ── Modo lectura / edición ─────────────────────────────────

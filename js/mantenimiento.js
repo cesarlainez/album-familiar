@@ -52,14 +52,58 @@
   /* ── Alternancia lectura / edición ───────────────────────── */
 
   Mantenimiento.prototype.modoLectura = function () {
+    /* Cada ficha empieza con su botón Editar disponible. */
+    const boton = this.refs.lectura.querySelector('[data-accion="editar"]');
+    if (boton && this._preparandoEditor !== this.perfil.apertura) {
+      boton.disabled = false;
+      boton.textContent = 'Editar';
+    }
     this.refs.editor.hidden = true;
     this.refs.lectura.hidden = false;
   };
 
-  Mantenimiento.prototype.modoEdicion = function () {
-    const p = this.perfil.perfilActual;
-    if (!p) return;
+  Mantenimiento.prototype.modoEdicion = async function () {
+    let p = this.perfil.perfilActual;
+    /* El bloqueo pertenece a UNA apertura de la ficha: al abrir otra
+       persona (o el hijo recién creado) se puede editar de inmediato. */
+    if (!p || this._preparandoEditor === this.perfil.apertura) return;
     const r = this.refs;
+    /* Si las fotos grandes aún no llegaron, se traen antes de mostrar el
+       editor: sus campos deben mostrar la imagen, no una ref "foto:id".
+       Mientras tanto el botón queda ocupado (un segundo toque no lanza
+       otra descarga) y, si la persona cerró o cambió de ficha, el editor
+       ya no se abre. Si las fotos no llegan, no se edita a medias. */
+    const be = global.AlbumBackend;
+    if (be && be.resolverPerfil && (p.galeria || []).some((g) => /^foto:/.test(g))) {
+      const apertura = this.perfil.apertura;
+      const boton = r.lectura.querySelector('[data-accion="editar"]');
+      this._preparandoEditor = apertura;
+      if (boton) { boton.disabled = true; boton.textContent = 'Cargando fotos…'; }
+      try {
+        /* Con un límite: una petición colgada no deja el botón bloqueado. */
+        const r2 = await Promise.race([
+          be.resolverPerfil(p),
+          new Promise((_, no) => setTimeout(() => no(new Error('tiempo agotado')), 20000)),
+        ]);
+        if (!this.perfil.abierto || this.perfil.apertura !== apertura) return;
+        this.perfil.actualizarFotos(p.id, r2.galeria);
+        p = this.perfil.perfilActual;
+        if ((p.galeria || []).some((g) => /^foto:/.test(g))) throw new Error('faltan fotos');
+      } catch (e) {
+        console.warn('[Editor] No se pudieron traer las fotos', e);
+        if (this.perfil.abierto && this.perfil.apertura === apertura) {
+          global.alert('No se pudieron cargar las fotos de esta persona. Revisa tu conexión e inténtalo de nuevo.');
+        }
+        return;
+      } finally {
+        /* Solo se libera si sigue siendo la misma ficha: si ya se abrió
+           otra, su botón no se toca (lo restableció modoLectura al abrir). */
+        if (this.perfil.apertura === apertura) {
+          this._preparandoEditor = null;
+          if (boton) { boton.disabled = false; boton.textContent = 'Editar'; }
+        }
+      }
+    }
     r.nombre.value = p.nombre_completo || '';
     r.nacimiento.value = p.fecha_nacimiento || '';
     r.fallecimiento.value = p.fecha_fallecimiento || '';
@@ -148,14 +192,25 @@
     try {
       await AlbumDatos.actualizar(p.id_familia, p.id, cambios);
       await this._sincronizarParejas(p, parejasSeleccionadas);
-      const perfiles = await this.recargar({ recentrar: false });
-      const fresco = perfiles.find((x) => x.id === p.id) || Object.assign({}, p, cambios);
-      this.perfil.refrescar(fresco);
-      this.modoLectura();
-      this.toast('Guardado');
     } catch (e) {
       this._error('No se pudo guardar', e);
+      return;
     }
+    /* Lo guardado ya está a salvo; si falla la relectura se dice tal cual,
+       sin anunciar un "Guardado" sobre una vista que no está al día. */
+    let perfiles;
+    try {
+      perfiles = await this.recargar({ recentrar: false });
+    } catch (e) {
+      this.perfil.refrescar(Object.assign({}, p, cambios));
+      this.modoLectura();
+      this._error('Se guardó, pero no se pudo volver a cargar el álbum', e);
+      return;
+    }
+    const fresco = perfiles.find((x) => x.id === p.id) || Object.assign({}, p, cambios);
+    this.perfil.refrescar(fresco);
+    this.modoLectura();
+    this.toast('Guardado');
   };
 
   Mantenimiento.prototype.eliminar = async function () {
@@ -170,12 +225,13 @@
 
     try {
       await AlbumDatos.eliminar(p.id_familia, p.id);
-      await this.recargar({ recentrar: false });
-      this.perfil.cerrar();
-      this.toast('Eliminado');
     } catch (e) {
       this._error('No se pudo eliminar', e);
+      return;
     }
+    this.perfil.cerrar();
+    if (!(await this._releer('Se eliminó'))) return;
+    this.toast('Eliminado');
   };
 
   /** tipo: 'pareja' | 'hijo' | 'progenitor'. Crea el nodo vinculado,
@@ -196,13 +252,27 @@
         }
       }
       if (!nuevo) return;
-
-      const perfiles = await this.recargar({ recentrar: false });
-      const fresco = perfiles.find((x) => x.id === nuevo.id) || nuevo;
-      this.perfil.abrir(fresco);   // alAbrir → modoLectura
-      this.modoEdicion();          // y saltamos directo a nombrar al nuevo
+      var creado = nuevo;
     } catch (e) {
       this._error('No se pudo crear el nodo', e);
+      return;
+    }
+    const perfiles = await this._releer('Se creó la persona');
+    if (!perfiles) return;
+    const fresco = perfiles.find((x) => x.id === creado.id) || creado;
+    this.perfil.abrir(fresco);   // alAbrir → modoLectura
+    this.modoEdicion();          // y saltamos directo a nombrar al nuevo
+  };
+
+  /** Relee el álbum tras una escritura que YA salió bien. Si la relectura
+   *  falla lo dice tal cual ("Se creó, pero…") y devuelve null: así nadie
+   *  cree que la escritura falló y la repite, duplicando personas. */
+  Mantenimiento.prototype._releer = async function (hecho) {
+    try {
+      return await this.recargar({ recentrar: false });
+    } catch (e) {
+      this._error(hecho + ', pero no se pudo volver a cargar el álbum', e);
+      return null;
     }
   };
 

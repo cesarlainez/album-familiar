@@ -75,6 +75,10 @@
     /* La cascada de entrada solo en el primer dibujo: tras cada guardado
        el árbol debe estar ahí al instante, no volver a encenderse. */
     this.contenedor.classList.toggle('sin-entrada', this._yaDibujado === true);
+    /* Momento (ms) en que termina la cascada de entrada: 200 ms de base,
+       150 por generación y 900 de la propia animación. */
+    const filas = this._bbox ? Math.round((this._bbox.maxY - 60 - this._bbox.minY - NODO_ALTO) / ALTURA_FILA) + 1 : 1;
+    this._finEntrada = this._yaDibujado ? 0 : 200 + filas * 150 + 900;
     this._yaDibujado = true;
     this._dibujarNodos();
     this._dibujarConexiones();
@@ -186,6 +190,14 @@
     const lote = document.createDocumentFragment();
     /* Con "reducir movimiento" no hay chispas: son animación pura. */
     const conChispas = !(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    /* El "begin" del SMIL cuenta desde que el svg empezó a existir, no desde
+       este dibujo: si los datos tardaban en llegar, las chispas arrancaban a
+       medias o ya habían terminado. Se ancla al reloj actual del svg. Solo
+       en el primer dibujo: guardar una edición no vuelve a lanzarlas. */
+    const svg = this.capaHilos.ownerSVGElement;
+    const arranque = this._finEntrada && svg && svg.getCurrentTime
+      ? svg.getCurrentTime() + this._finEntrada / 1000
+      : null;
 
     /* Ancla en coordenadas del SVG. ANCLA_Y sube el punto hasta el centro
        de la fotografía (el nodo está centrado incluyendo su pie de texto). */
@@ -274,17 +286,21 @@
       lote.appendChild(trazo);
 
       /* Chispa que recorre el hilo: la luz viajando entre generaciones.
-         Recorridos finitos: en reposo el lienzo queda quieto y el celular
-         no gasta batería en 48 animaciones eternas. */
-      if (conChispas) {
+         Un solo recorrido: cualquier animación SMIL en marcha obliga a
+         repintar el svg entero en cada cuadro (medido: ~45 puntos de CPU en
+         un celular, con 1 chispa o con 46), así que se limita en el tiempo,
+         no en cantidad, y se pausa en cuanto la persona toca el lienzo. */
+      if (conChispas && arranque != null) {
         const chispa = document.createElementNS(NS, 'circle');
         chispa.setAttribute('class', 'chispa');
         chispa.setAttribute('r', '1.9');
         const motion = document.createElementNS(NS, 'animateMotion');
         motion.setAttribute('dur', 5 + (i % 3) + 's');
-        motion.setAttribute('repeatCount', '3');
+        motion.setAttribute('repeatCount', '1');
         motion.setAttribute('path', d);
-        motion.setAttribute('begin', (i % 8) * 0.7 + 's');
+        /* Arrancan cuando la entrada del árbol ya terminó: compitiendo con
+           ella saturaban el procesador de un celular los primeros segundos. */
+        motion.setAttribute('begin', (arranque + (i % 8) * 0.7).toFixed(2) + 's');
         chispa.appendChild(motion);
         lote.appendChild(chispa);
       }
@@ -466,6 +482,9 @@
     const c = this.contenedor;
 
     c.addEventListener('pointerdown', (e) => {
+      /* Sobre un control (p. ej. "Agregar primera persona") no hay gesto:
+         capturar el puntero desviaba su clic al lienzo y no respondía. */
+      if (e.target.closest && e.target.closest('button, a, input, select, textarea, label')) return;
       /* La captura garantiza recibir move/up aunque el dedo salga del
          lienzo. Si el navegador no la soporta para este puntero, los
          gestos siguen funcionando mientras el dedo esté encima. */
@@ -526,6 +545,13 @@
     const soltar = (e) => {
       this._punteros.delete(e.pointerId);
       if (this._punteros.size < 2) this._distanciaPinza = 0;
+      /* Tras un pellizco, el dedo que sigue apoyado continúa arrastrando
+         desde donde está (antes quedaba muerto hasta levantarlo). */
+      if (this._punteros.size === 1) {
+        const [p] = this._punteros.values();
+        this._arrastre = { x: p.x - this.desplazamiento.x, y: p.y - this.desplazamiento.y };
+        this._gesto = null;
+      }
       if (this._punteros.size === 0) {
         this._arrastre = null;
         c.classList.remove('arrastrando');
@@ -554,13 +580,29 @@
     );
 
     window.addEventListener('keydown', (e) => {
-      if (e.target !== document.body && e.target.tagName !== 'MAIN') return;
+      /* Funcionan con el foco en el lienzo o en una tarjeta; no mientras se
+         escribe en un campo ni con una ventana encima. */
+      const t = e.target;
+      if (t.closest && t.closest('input, textarea, select, [contenteditable], .flip-capa, .candado, .visor')) return;
+      if (document.querySelector('.flip-capa.abierta, .visor:not([hidden]), .candado:not([hidden])')) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === '+' || e.key === '=') this.zoomEn(this.escala * 1.2);
       if (e.key === '-' || e.key === '_') this.zoomEn(this.escala / 1.2);
       if (e.key === 'c' || e.key === 'C') this.centrar();
     });
 
-    window.addEventListener('resize', () => this.centrar(false));
+    /* Al redimensionar (o girar el teléfono) se conserva la vista: el punto
+       del mundo que estaba en el centro sigue en el centro, con el mismo zoom. */
+    const medir = () => { const r = this.contenedor.getBoundingClientRect(); return { w: r.width, h: r.height }; };
+    let tam = medir();
+    window.addEventListener('resize', () => {
+      const ahora = medir();
+      if (!tam || !this._bbox) { tam = ahora; this.centrar(false); return; }
+      this.desplazamiento.x += (ahora.w - tam.w) / 2;
+      this.desplazamiento.y += (ahora.h - tam.h) / 2;
+      tam = ahora;
+      this._aplicar();
+    });
     document.addEventListener('visibilitychange', () => this.pausar('oculto', document.hidden));
   };
 

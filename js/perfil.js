@@ -33,6 +33,9 @@
   Perfil.prototype.abrir = function (perfil) {
     clearTimeout(this._cerrarTimer);
     this._abiertaEn = Date.now();
+    /* Identifica ESTA apertura: lo que llegue tarde (fotos, el editor)
+       comprueba que la ficha sigue siendo la misma que lo pidió. */
+    this.apertura = (this.apertura || 0) + 1;
     this.perfilActual = perfil;
     this._pintarFrente(perfil);
     this._pintarLectura(perfil);
@@ -94,6 +97,19 @@
       r.frentePlaceholder.hidden = false;
       r.frentePlaceholder.textContent = AlbumDatos.iniciales(perfil.nombre_completo);
     }
+  };
+
+  /** Llegaron las fotos grandes de la persona abierta: SOLO se cambian sus
+   *  imágenes. Nunca se reemplaza el perfil entero, porque mientras
+   *  bajaban pudo haberse editado y guardado (y se revertiría). */
+  Perfil.prototype.actualizarFotos = function (id, galeria) {
+    if (!this.abierto || !this.perfilActual || this.perfilActual.id !== id) return;
+    this.perfilActual = Object.assign({}, this.perfilActual, { galeria: galeria });
+    this._pintarFrente(this.perfilActual);
+    const indice = this.indice;
+    this.galeria = (galeria || []).filter((g) => g && g.indexOf('foto:') !== 0).slice(0, MAX_FOTOS);
+    this.indice = Math.min(indice || 0, Math.max(0, this.galeria.length - 1));
+    this._cargarGaleria(this.perfilActual);
   };
 
   /** Re-pinta ambas caras con datos frescos (lo usa el CRUD tras guardar). */
