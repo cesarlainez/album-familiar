@@ -201,6 +201,24 @@
     return 'image/jpeg';
   }
 
+  /** Extensión de una nota de voz según el tipo de su data URL. */
+  function extensionAudio(url) {
+    const m = /^data:audio\/([a-z0-9-]+)/i.exec(String(url));
+    const t = m ? m[1].toLowerCase() : 'webm';
+    if (t === 'mp4' || t === 'x-m4a' || t === 'aac') return 'm4a';
+    if (t === 'ogg') return 'ogg';
+    if (t === 'mpeg') return 'mp3';
+    return 'webm';
+  }
+
+  function tipoAudio(ruta) {
+    const ext = (/\.([a-z0-9]+)$/i.exec(ruta) || [])[1];
+    if (ext === 'm4a') return 'audio/mp4';
+    if (ext === 'ogg') return 'audio/ogg';
+    if (ext === 'mp3') return 'audio/mpeg';
+    return 'audio/webm';
+  }
+
   const AlbumRespaldo = {
     /** Arma y descarga el .zip de la familia indicada.
      *  `avisar` recibe mensajes de progreso (opcional).
@@ -218,6 +236,7 @@
       const entradas = [];
       const usados = new Set();
       let fotos = 0;
+      let voces = 0;
       let fallidas = 0;
 
       for (const p of lista) {
@@ -247,6 +266,25 @@
           }
         }
         p.galeria = galeria;
+
+        /* Notas de voz: viajan como archivos de audio dentro del ZIP */
+        p.voces = (Array.isArray(p.voces) ? p.voces : []).map((v) => Object.assign({}, v));
+        for (let i = 0; i < p.voces.length; i++) {
+          const v = p.voces[i];
+          if (!v.ref || !/^audio:/.test(v.ref)) continue;
+          aviso('Descargando voces… ' + (voces + 1));
+          try {
+            const url = await AlbumDatos.aportes.leerAudio(idFamilia, v.ref);
+            const datos = new Uint8Array(await (await fetch(url)).arrayBuffer());
+            const nombre = 'voces/' + p.id + '-' + (i + 1) + '.' + extensionAudio(url);
+            entradas.push({ nombre: nombre, datos: datos });
+            v.ref = nombre;
+            voces++;
+          } catch (e) {
+            console.warn('[Respaldo] No se pudo descargar una voz:', v.ref, e);
+            fallidas++;
+          }
+        }
       }
 
       aviso('Escribiendo el archivo…');
@@ -258,6 +296,7 @@
         etiqueta: etiqueta || idFamilia,
         total_perfiles: lista.length,
         total_fotos: fotos,
+        total_voces: voces,
         perfiles: lista,
       };
       entradas.unshift({
@@ -267,7 +306,7 @@
 
       const nombreZip = 'album-' + String(idFamilia).replace(/[^\w-]+/g, '_') + '-' + sello() + '.zip';
       descargarBlob(zipCrear(entradas), nombreZip);
-      return { perfiles: lista.length, fotos: fotos, fallidas: fallidas };
+      return { perfiles: lista.length, fotos: fotos, voces: voces, fallidas: fallidas };
     },
 
     /** Lee un .zip (o un album.json suelto) y devuelve { manifiesto, archivos }. */
@@ -319,6 +358,33 @@
           subidas++;
         }
         p.galeria = galeria.filter(Boolean);
+
+        /* Voces: se vuelven a guardar (en la nube o, sin ella, en este
+           navegador) y el perfil apunta a la grabación nueva. */
+        const vocesCopia = [];
+        for (const v of Array.isArray(p.voces) ? p.voces : []) {
+          if (!v || !v.ref) continue;
+          if (!/^voces\//.test(v.ref)) { vocesCopia.push(v); continue; }
+          const datos = archivos.get(v.ref);
+          if (!datos) { sinSubir++; continue; }
+          aviso('Guardando voces… ' + (vocesCopia.length + 1));
+          const blob = new Blob([datos], { type: tipoAudio(v.ref) });
+          const url = await new Promise((resolver, rechazar) => {
+            const lector = new FileReader();
+            lector.onload = () => resolver(lector.result);
+            lector.onerror = () => rechazar(new Error('No se pudo leer una voz de la copia'));
+            lector.readAsDataURL(blob);
+          });
+          try {
+            vocesCopia.push(Object.assign({}, v, { ref: await AlbumDatos.aportes.guardarAudio(idFamilia, url, p.id) }));
+          } catch (e) {
+            /* Sin espacio (p. ej. el navegador sin nube) la persona se
+               restaura igual, sin esa voz: nunca a medias. */
+            console.warn('[Respaldo] No se pudo guardar una voz:', e);
+            sinSubir++;
+          }
+        }
+        p.voces = vocesCopia;
       }
 
       aviso('Guardando los perfiles…');

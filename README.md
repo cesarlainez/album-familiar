@@ -12,6 +12,7 @@ en el código.
 ```
 Album Familiar/
 ├─ index.html            Lienzo, modal y visor
+├─ aportar.html          Página para aportar sin cuenta (voz, foto, recuerdo)
 ├─ css/galeria.css       Estilo "Galería Nocturna"
 ├─ js/
 │  ├─ config.js          ← credenciales de Firebase (RELLENAR)
@@ -22,6 +23,12 @@ Album Familiar/
 │  ├─ lienzo.js          Pan / zoom / nodos / hilos de luz
 │  ├─ perfil.js          Modal, carrusel (máx. 4), pantalla completa
 │  ├─ respaldo.js        Copia de seguridad .zip (escribe y lee a mano)
+│  ├─ lugares.js         Catálogo de lugares + fonética en español + búsqueda
+│  ├─ buscador.js        Buscar personas, lugares, años y familias
+│  ├─ atlas.js           Atlas de raíces: mapa y línea de tiempo
+│  ├─ aportes.js         Enlaces de aportes y bandeja de revisión
+│  ├─ aportar.js         La página aportar.html
+│  ├─ puentes.js         Puentes con otras familias
 │  └─ app.js             Arranque
 └─ backend/
    ├─ firestore.rules    Reglas de seguridad (pegar en la consola)
@@ -81,6 +88,10 @@ clave que teclea la familia.
 ### 4. Publicar las reglas de seguridad
 **Firestore Database -> pestaña Reglas** -> pega el contenido de
 [`backend/firestore.rules`](backend/firestore.rules) -> **Publicar**.
+
+**Cada vez que cambie `firestore.rules` hay que volver a publicarlo.** Sin las
+reglas de octubre de 2026, el Atlas y el buscador funcionan, pero los Aportes y
+los Puentes responden «permiso denegado».
 
 Sin esto el álbum queda abierto de par en par: la configuración de `config.js`
 es pública por diseño, y son las reglas las que impiden que un desconocido
@@ -199,6 +210,55 @@ servidor — lectura abierta, escritura solo con sesión.
 
 Añadir una persona nueva en la tabla la coloca y conecta sola: la simulación de
 fuerzas reacomoda el grafo. No hay coordenadas fijas en el código.
+
+---
+
+## Atlas, buscador, aportes y puentes
+
+Las tres propuestas de [`docs/PLAN-SAAS.md`](docs/PLAN-SAAS.md), funcionando con
+el backend de hoy (sin servidores ni costos extra).
+
+### Atlas de raíces y buscador
+- En **Editar**, cada persona tiene tres lugares (nacimiento, residencia,
+  fallecimiento): un catálogo con los 14 departamentos y los 44 municipios de la
+  reorganización de 2024, más las ciudades de la diáspora, y un campo libre para
+  el distrito, el cantón o el caserío.
+- **Atlas** dibuja en SVG (sin Google Maps ni cuotas) la familia sobre El
+  Salvador o el mundo, con arcos de migración y una línea de tiempo por décadas.
+- **Buscar** (o la tecla `/`) busca por nombre *según cómo suena* (Laínez =
+  Lainez = Lainés; Vásquez = Vázquez), por lugar y por año o década (`1930s`).
+  También encuentra otras familias registradas por apellido y lugar, usando un
+  **resumen** que se guarda en el documento de cada familia al editarla.
+
+### Aportes sin cuenta
+- **Aportes → Crear enlace** genera un enlace con token aleatorio de 192 bits,
+  vigente 14 días y con un tope de 40 aportes (lo imponen las reglas: un enlace
+  filtrado no puede llenar la base), para compartir por WhatsApp.
+- Quien lo abre (`aportar.html`) graba una nota de voz (hasta 3 min, Opus
+  24 kbps), sube una foto (se reduce en el teléfono) o escribe un recuerdo.
+- Todo cae en la **bandeja**: nada se publica hasta aprobarlo y elegir a qué
+  persona va. Los enlaces se pueden revocar; lo publicado se puede quitar.
+- La bandeja lista solo datos ligeros; la grabación o la foto de cada aporte
+  vive aparte (`aportes/{id}/carga/datos`) y se baja al pulsar «Escuchar».
+- Las voces viven en `familias/{id}/audios` y entran en la copia `.zip`
+  (carpeta `voces/`), y se restauran con ella.
+
+### Puentes con otras familias
+- **Puentes → Buscar coincidencias** compara este árbol con las familias que
+  comparten apellidos (según el resumen de cada familia, que se guarda cuando
+  alguien con la clave la abre; una familia que nadie ha abierto todavía no
+  aparece). Solo propone un puente si coinciden el nombre de pila y un
+  apellido, la época (±10 años, si se sabe) **y además** un padre, una madre o un
+  cónyuge en el mismo papel. Como mucho 5 propuestas por búsqueda.
+- La otra familia ve la propuesta sin saber quién la hizo; al aceptar las dos, la
+  tarjeta lleva un sello dorado y la ficha enlaza al otro árbol («Ver allí»).
+- Límite conocido: con la clave compartida de hoy, quien tiene la clave puede
+  aceptar por los dos lados. Se resuelve con las cuentas por familia del plan.
+
+### Fechas con solo el año
+Muchas fechas reales se conocen solo por el año (`1938`). El selector de fecha no
+puede mostrarlas; antes, guardar la ficha borraba ese año. Ahora se conserva
+mientras nadie toque el campo, y el editor lo avisa debajo.
 
 ---
 

@@ -1462,3 +1462,515 @@ select.campo__input option {
   }
   .grano { animation: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   ATLAS, BUSCADOR, APORTES Y PUENTES
+   ══════════════════════════════════════════════════════════════ */
+
+/* Contador en un botón del encabezado (aportes por revisar, propuestas) */
+.insignia {
+  display: inline-block;
+  min-width: 16px;
+  margin-left: 7px;
+  padding: 1px 5px;
+  font-size: 9px;
+  letter-spacing: 0;
+  line-height: 14px;
+  text-align: center;
+  color: var(--negro-profundo);
+  background: var(--luz-calida);
+  border-radius: 8px;
+}
+
+.btn-crud--mini { padding: 6px 10px; font-size: 9px; }
+.btn-crud.activo {
+  color: var(--blanco-brillo);
+  border-color: rgba(255, 248, 231, 0.55);
+  background: rgba(255, 248, 231, 0.08);
+}
+a.btn-crud { text-decoration: none; display: inline-block; }
+
+/* En pantallas medianas los siete botones del encabezado se aprietan */
+@media (max-width: 1180px) {
+  .cabecera__acciones { gap: 8px; }
+  .cabecera__acciones .btn-fantasma { padding: 9px 12px; letter-spacing: 0.16em; }
+}
+
+/* ── Ficha: lugares, voces, recuerdos y puentes ──────────────── */
+
+.ficha-lugares {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.5;
+  color: var(--gris-claro);
+}
+.ficha-lugares__tipo {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gris-tenue);
+}
+
+.ficha-voces, .ficha-recuerdos { display: flex; flex-direction: column; gap: 10px; }
+
+.voz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.voz__detalle { font-size: 11px; font-weight: 300; color: var(--gris-tenue); flex: 1; min-width: 140px; }
+.voz__audio { width: 100%; max-width: 360px; height: 36px; color-scheme: dark; }
+
+.recuerdo { margin: 0; }
+.recuerdo__texto {
+  margin: 0;
+  padding: 2px 0 2px 14px;
+  border-left: 1px solid rgba(245, 230, 200, 0.3);
+  font-size: 13px;
+  font-weight: 300;
+  font-style: italic;
+  line-height: 1.65;
+  color: var(--luz-ambar);
+  white-space: pre-line;
+}
+.recuerdo__autor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--gris-tenue);
+}
+
+.puente-ficha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 300;
+  color: #f3d58a;
+}
+
+/* Editor: tipo + catálogo + detalle libre */
+.lugar-fila {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.lugar-fila__tipo {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--gris-claro);
+}
+@media (max-width: 680px) {
+  .lugar-fila { grid-template-columns: 1fr; gap: 6px; }
+}
+
+/* ── Sello dorado de puente en la tarjeta ────────────────────── */
+
+.nodo--puente .nodo__marco {
+  box-shadow: 0 0 0 1px rgba(243, 213, 138, 0.75), 0 0 26px -4px rgba(243, 213, 138, 0.55);
+}
+.nodo__puente {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  overflow: hidden;
+  padding: 3px 6px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #1a1407;
+  background: rgba(243, 213, 138, 0.92);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* ── Paneles (buscador, aportes, puentes) ────────────────────── */
+
+.panel {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 90px 16px 24px;
+}
+.panel__velo {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.panel__caja {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(620px, 100%);
+  max-height: calc(100vh - 114px);
+  max-height: calc(100dvh - 114px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  color-scheme: dark;
+  padding: 28px 26px;
+  background: linear-gradient(150deg, #151515 0%, #0a0a0a 100%);
+  border-radius: 4px;
+  box-shadow: 0 50px 110px -28px rgba(0, 0, 0, 1), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.panel__cerrar {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--gris-claro);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.panel__cerrar:hover { color: var(--blanco-brillo); }
+.panel__titulo {
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 16px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--blanco-brillo);
+  padding-right: 34px;
+}
+.panel__nota {
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--gris-tenue);
+}
+.panel__nota em { color: var(--gris-claro); }
+.panel__seccion {
+  margin-top: 8px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gris-tenue);
+}
+.panel__buscar { font-size: 15px; padding: 13px 14px; }
+.panel__acciones { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.resultados, .enlaces, .bandeja, .puentes {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.resultado {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  font-family: var(--fuente-texto);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background var(--rapido) var(--curva), border-color var(--rapido) var(--curva);
+}
+.resultado:hover, .resultado:focus-visible {
+  outline: none;
+  background: rgba(255, 248, 231, 0.06);
+  border-color: rgba(255, 248, 231, 0.3);
+}
+.resultado__titulo { font-size: 14px; font-weight: 300; color: var(--blanco-brillo); }
+.resultado__detalle { font-size: 11px; font-weight: 300; line-height: 1.5; color: var(--gris-tenue); }
+.resultados__vacio, .puentes__seccion {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--gris-tenue);
+  padding: 4px 2px;
+}
+.puentes__seccion {
+  margin-top: 10px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.enlace, .aporte, .puente {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+}
+.enlace { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.enlace--vencido { opacity: 0.55; }
+.enlace__estado { font-size: 12px; font-weight: 300; color: var(--gris-claro); }
+.enlace__acciones, .aporte__acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.enlace__acciones .btn-crud--peligro { margin-left: 0; }
+.aporte__cabeza, .puente__texto { font-size: 13px; font-weight: 300; line-height: 1.5; color: var(--blanco-brillo); }
+.aporte__foto { max-width: 100%; max-height: 260px; object-fit: contain; align-self: flex-start; border-radius: 2px; }
+.aporte__para { display: flex; flex-direction: column; gap: 6px; }
+.aporte__nota { font-size: 11px; color: var(--luz-ambar); }
+
+/* ── Atlas de raíces ─────────────────────────────────────────── */
+
+.atlas {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(ellipse at 50% 40%, #0d1016 0%, #000 75%);
+}
+.atlas__barra {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 28px 10px;
+}
+.atlas__titulo {
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 15px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--blanco-brillo);
+}
+.atlas__vistas { display: flex; gap: 6px; margin-right: auto; }
+.atlas__cerrar {
+  width: 40px;
+  height: 40px;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--gris-claro);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.atlas__cerrar:hover { color: var(--blanco-brillo); border-color: rgba(255, 248, 231, 0.4); }
+.atlas__cuerpo {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 12px;
+  padding: 0 28px;
+}
+.atlas__mapa { width: 100%; height: 100%; min-height: 0; overflow: visible; }
+.atlas__lista {
+  color-scheme: dark;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 8px 0;
+}
+.atlas__pista { font-size: 12px; font-weight: 300; line-height: 1.6; color: var(--gris-tenue); }
+.atlas__lugar {
+  margin-bottom: 10px;
+  font-family: var(--fuente-titulo);
+  font-weight: 300;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: #f3d58a;
+}
+.atlas__vacio {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 420px;
+  padding: 18px 22px;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--gris-claro);
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+.atlas__vacio strong { color: var(--blanco-brillo); font-weight: 400; }
+.atlas__tiempo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 28px 24px;
+}
+.atlas__play { width: 44px; padding: 9px 0; font-size: 12px; letter-spacing: 0; }
+.atlas__rango { flex: 1; min-width: 0; accent-color: #f3d58a; }
+.atlas__decada { min-width: 170px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--luz-ambar); }
+
+/* Trazos del mapa (SVG) */
+.atlas__reticula { stroke: rgba(255, 255, 255, 0.04); stroke-width: 1; }
+.atlas__contorno {
+  fill: rgba(245, 230, 200, 0.025);
+  stroke: rgba(245, 230, 200, 0.22);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 4;
+}
+.atlas__arco {
+  fill: none;
+  stroke: rgba(243, 213, 138, 0.55);
+  stroke-linecap: round;
+  stroke-dasharray: 2 6;
+  animation: atlas-flujo 1.6s linear infinite;
+}
+@keyframes atlas-flujo { to { stroke-dashoffset: -16; } }
+.atlas__estrella { fill: rgba(255, 255, 255, 0.18); }
+.atlas__punto--vivo .atlas__estrella { fill: var(--luz-calida); }
+.atlas__halo { fill: rgba(255, 248, 231, 0.10); }
+.atlas__punto--vivo { cursor: pointer; }
+.atlas__punto--vivo:focus { outline: none; }
+.atlas__punto--vivo:hover .atlas__halo,
+.atlas__punto--vivo:focus .atlas__halo,
+.atlas__punto--elegido .atlas__halo { fill: rgba(243, 213, 138, 0.28); }
+.atlas__punto--elegido .atlas__estrella { fill: #f3d58a; }
+.atlas__etiqueta {
+  font-family: var(--fuente-texto);
+  font-size: var(--atlas-letra, 13px);
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  text-anchor: middle;
+  fill: var(--gris-claro);
+  paint-order: stroke;
+  stroke: #000;
+  stroke-width: 3px;
+  pointer-events: none;
+}
+.atlas__etiqueta--tenue { fill: rgba(255, 255, 255, 0.22); font-size: calc(var(--atlas-letra, 13px) * 0.85); }
+
+@media (max-width: 860px) {
+  .atlas__barra { flex-wrap: wrap; padding: 14px 16px 8px; gap: 10px; }
+  .atlas__titulo { font-size: 12px; letter-spacing: 0.3em; width: 100%; }
+  .atlas__cuerpo { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; padding: 0 16px; }
+  .atlas__lista { max-height: 34vh; }
+  .atlas__tiempo { padding: 10px 16px 18px; }
+  .atlas__decada { min-width: 0; font-size: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas__arco { animation: none; }
+}
+
+/* ── Móvil: el encabezado tiene más botones; se reparten en filas ── */
+@media (max-width: 767px) {
+  .cabecera__acciones { flex-wrap: wrap; justify-content: flex-end; }
+  .cabecera__acciones .btn-fantasma { padding: 8px 10px; letter-spacing: 0.12em; }
+  .panel { padding: 16px 10px; }
+  .panel__caja { max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); padding: 22px 16px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PÁGINA DE APORTES (aportar.html)
+   ══════════════════════════════════════════════════════════════ */
+
+html.pagina-aportar,
+html.pagina-aportar body {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+}
+html.pagina-aportar body {
+  background: radial-gradient(ellipse at 50% 0%, #15130f 0%, #000 70%) fixed;
+}
+
+.aportar {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 28px 16px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.aportar__cabeza { display: flex; flex-direction: column; gap: 10px; }
+.aportar__titulo {
+  font-family: var(--fuente-titulo);
+  font-weight: 200;
+  font-size: 24px;
+  line-height: 1.3;
+  color: var(--blanco-brillo);
+}
+.aportar__caja {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 18px;
+  background: linear-gradient(150deg, #151515 0%, #0a0a0a 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.aportar__grande {
+  font-family: var(--fuente-titulo);
+  font-weight: 300;
+  font-size: 22px;
+  color: var(--luz-calida);
+}
+.aportar__input { font-size: 16px; padding: 12px 14px; } /* 16px: iOS no hace zoom */
+.aportar__tipos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.aportar__tipo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 6px;
+  font-family: var(--fuente-texto);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--gris-claro);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.aportar__tipo span { font-size: 24px; }
+.aportar__tipo.activo {
+  color: var(--blanco-brillo);
+  border-color: rgba(243, 213, 138, 0.7);
+  background: rgba(243, 213, 138, 0.08);
+}
+.aportar__seccion { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.aportar__grabar {
+  width: 100%;
+  padding: 22px;
+  font-family: var(--fuente-titulo);
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  color: var(--negro-profundo);
+  background: var(--luz-calida);
+  border: 0;
+  border-radius: 40px;
+  cursor: pointer;
+}
+.aportar__grabar.grabando {
+  color: #fff;
+  background: #b43c3c;
+  animation: latido 1.2s ease-in-out infinite;
+}
+@keyframes latido { 50% { box-shadow: 0 0 0 10px rgba(180, 60, 60, 0.25); } }
+.aportar__reloj { font-size: 13px; color: var(--gris-claro); }
+.aportar__elegir { width: 100%; padding: 18px; text-align: center; font-size: 12px; }
+.aportar__enviar { padding: 16px; font-size: 12px; }
+
+.campo__pista { font-size: 11px; font-weight: 300; line-height: 1.4; color: var(--luz-ambar); }

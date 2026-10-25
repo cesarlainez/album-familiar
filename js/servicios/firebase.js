@@ -49,6 +49,10 @@
 
   const colPerfiles = (idFamilia) => bd().collection('familias').doc(idFamilia).collection('perfiles');
   const colFotos = (idFamilia) => bd().collection('familias').doc(idFamilia).collection('fotos');
+  const colEnlaces = (idFamilia) => bd().collection('familias').doc(idFamilia).collection('enlaces');
+  const colAportes = (idFamilia) => bd().collection('familias').doc(idFamilia).collection('aportes');
+  const colAudios = (idFamilia) => bd().collection('familias').doc(idFamilia).collection('audios');
+  const ms = (v) => (v && typeof v.toMillis === 'function' ? v.toMillis() : Number(v) || 0);
 
   /* ── Fotos: traducción entre documento y data URL ──────────
      La app guarda en `galeria` cadenas que pone tal cual en un <img>.
@@ -226,11 +230,165 @@
       id_pareja: Array.isArray(p.id_pareja) ? p.id_pareja : [],
       miniatura: p.miniatura || null,
       miniatura_de: p.miniatura_de || null,
+      lugares: p.lugares && typeof p.lugares === 'object' ? p.lugares : null,
+      voces: Array.isArray(p.voces) ? p.voces : [],
+      recuerdos: Array.isArray(p.recuerdos) ? p.recuerdos : [],
     };
   }
 
+  /* ── Aportes sin cuenta ─────────────────────────────────────
+     familias/{f}/enlaces/{token}         quien conoce el token puede leerlo
+                                          (get, nunca list) y aportar. Lleva
+                                          `usos`: cada aporte lo sube en 1.
+     familias/{f}/aportes/{token_n}       el aporte n-ésimo de ese enlace,
+                                          solo metadatos (pesa poco: la
+                                          bandeja se lista sin bajar audios).
+     familias/{f}/aportes/{id}/carga/datos  la grabación o la foto.
+     familias/{f}/audios/{id}             notas de voz aprobadas, una por
+                                          documento, como las fotos.
+     Las reglas (backend/firestore.rules) exigen que aporte, carga y usos
+     se escriban juntos y topan cada enlace en MAX_USOS aportes: un enlace
+     filtrado no puede llenar la base. */
+  const MAX_USOS = 40;
+  const aportes = {
+    MAX_USOS,
+    async crearEnlace(fid, info) {
+      const b = new Uint8Array(24);
+      global.crypto.getRandomValues(b);
+      const token = btoa(String.fromCharCode.apply(null, b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const ahora = Date.now();
+      const vence = ahora + (info.dias || 14) * 86400000;
+      const T = global.firebase.firestore.Timestamp;
+      await colEnlaces(fid).doc(token).set({
+        etiqueta: String(info.etiqueta || fid).slice(0, 80),
+        personas: (info.personas || []).slice(0, 2000),
+        creado: T.fromMillis(ahora),
+        vence: T.fromMillis(vence),
+        usos: 0,
+      });
+      return { token, creado: ahora, vence, usos: 0 };
+    },
+    async listarEnlaces(fid) {
+      const c = await colEnlaces(fid).get();
+      return c.docs.map((d) => ({ token: d.id, creado: ms(d.data().creado), vence: ms(d.data().vence), usos: d.data().usos || 0 }))
+        .sort((x, y) => y.creado - x.creado);
+    },
+    async revocarEnlace(fid, token) {
+      await colEnlaces(fid).doc(token).delete();
+    },
+    async leerEnlace(fid, token) {
+      let d;
+      try {
+        d = await colEnlaces(fid).doc(token).get();
+      } catch (e) {
+        if (/permission/i.test(String(e && (e.code || e.message)))) return null;
+        throw e;
+      }
+      if (!d.exists) return null;
+      const e = d.data();
+      if (ms(e.vence) < Date.now()) return null;
+      return { etiqueta: e.etiqueta, personas: e.personas || [], vence: ms(e.vence), usos: e.usos || 0 };
+    },
+    /** Aporte + carga + usos del enlace, en una transacción (las reglas
+     *  rechazan cualquiera de las tres por separado). */
+    async enviar(fid, token, aporte) {
+      const refEnlace = colEnlaces(fid).doc(token);
+      await bd().runTransaction(async (tx) => {
+        const e = await tx.get(refEnlace);
+        if (!e.exists || ms(e.data().vence) < Date.now()) throw new Error('El enlace ya no es válido. Pide uno nuevo a tu familia.');
+        const n = (e.data().usos || 0) + 1;
+        if (n > MAX_USOS) throw new Error('Este enlace ya recibió muchos aportes. Pide uno nuevo a tu familia.');
+        const refAporte = colAportes(fid).doc(token + '_' + n);
+        const meta = Object.assign({}, aporte, {
+          token,
+          creado: global.firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        delete meta.datos;
+        tx.set(refAporte, meta);
+        if (aporte.datos) tx.set(refAporte.collection('carga').doc('datos'), { datos: aporte.datos });
+        tx.update(refEnlace, { usos: n });
+      });
+    },
+    /** La bandeja: solo metadatos (la carga se pide con leerCarga). */
+    async listar(fid) {
+      const c = await colAportes(fid).get();
+      return c.docs.map((d) => Object.assign({}, d.data(), { id: d.id, creado: ms(d.data().creado) }))
+        .sort((x, y) => x.creado - y.creado);
+    },
+    async leerCarga(fid, id) {
+      const d = await colAportes(fid).doc(id).collection('carga').doc('datos').get();
+      if (!d.exists || !d.data().datos) throw new Error('No se encontró el archivo del aporte.');
+      return d.data().datos;
+    },
+    async descartar(fid, id) {
+      const lote = bd().batch();
+      const ref = colAportes(fid).doc(id);
+      lote.delete(ref.collection('carga').doc('datos'));
+      lote.delete(ref);
+      await lote.commit();
+    },
+    async guardarAudio(fid, dataUrl, idPerfil) {
+      const ref = colAudios(fid).doc();
+      await ref.set({ datos: dataUrl, perfil: idPerfil || null, creado: new Date().toISOString() });
+      return 'audio:' + ref.id;
+    },
+    async leerAudio(fid, ref) {
+      const d = await colAudios(fid).doc(String(ref).replace(/^audio:/, '')).get();
+      if (!d.exists || !d.data().datos) throw new Error('No se encontró la grabación.');
+      return d.data().datos;
+    },
+    async borrarAudio(fid, ref) {
+      await colAudios(fid).doc(String(ref).replace(/^audio:/, '')).delete();
+    },
+  };
+
+  /* ── Puentes entre familias ─────────────────────────────────
+     puentes/{id}: ver js/puentes.js. Sin sesión solo se pueden leer los
+     ACEPTADOS (las reglas lo exigen), así que la consulta lo pide. */
+  const colPuentes = () => bd().collection('puentes');
+  const puentes = {
+    async listar(fid) {
+      const conSesion = !!(global.firebase.auth && auth().currentUser);
+      const consulta = (campo) => {
+        let q = colPuentes().where(campo, '==', fid);
+        if (!conSesion) q = q.where('estado', '==', 'aceptado');
+        return q.get();
+      };
+      const [a, b] = await Promise.all([consulta('fidA'), consulta('fidB')]);
+      const vistos = new Map();
+      a.docs.concat(b.docs).forEach((d) => vistos.set(d.id, Object.assign({ id: d.id }, d.data())));
+      return [...vistos.values()];
+    },
+    async proponer(id, fila) {
+      const ref = colPuentes().doc(id);
+      const previo = await ref.get();
+      if (previo.exists) return Object.assign({ id }, previo.data()); // no se reabre
+      await ref.set(Object.assign({}, fila, { creado: new Date().toISOString() }));
+      return Object.assign({ id }, fila);
+    },
+    async responder(id, lado, acepta) {
+      const ref = colPuentes().doc(id);
+      await bd().runTransaction(async (tx) => {
+        const d = await tx.get(ref);
+        if (!d.exists) throw new Error('El puente ya no existe.');
+        const p = Object.assign({}, d.data());
+        p['acepta' + lado] = !!acepta;
+        const estado = p.aceptaA === false || p.aceptaB === false ? 'rechazado'
+          : p.aceptaA === true && p.aceptaB === true ? 'aceptado' : 'propuesto';
+        const cambios = { estado };
+        cambios['acepta' + lado] = !!acepta;
+        tx.update(ref, cambios);
+      });
+    },
+    async retirar(id) {
+      await colPuentes().doc(id).delete();
+    },
+  };
+
   const FirebaseServicio = {
     nombre: 'firebase',
+    aportes,
+    puentes,
 
     /* ── Clave familiar (Auth con una cuenta compartida) ────── */
 
@@ -306,6 +464,20 @@
       }
     },
 
+    /** Cada familia con el resumen que guardó (puede faltar si nadie la
+     *  editó desde que existe el buscador). */
+    async listarResumenes() {
+      const captura = await bd().collection('familias').get();
+      return captura.docs.map((d) => ({ id: d.id, resumen: d.data().resumen || null }));
+    },
+
+    async guardarResumen(idFamilia, resumen) {
+      await bd().collection('familias').doc(idFamilia).set(
+        { id: idFamilia, resumen: Object.assign({}, resumen, { actualizado: new Date().toISOString() }) },
+        { merge: true }
+      );
+    },
+
     async crear(perfil) {
       const idFamilia = perfil.id_familia;
       const datos = fila(perfil);
@@ -328,6 +500,18 @@
       delete datos.id;
       delete datos.id_familia;
       await colPerfiles(idFamilia).doc(id).set(datos, { merge: true });
+    },
+
+    async agregarALista(idFamilia, id, campo, item) {
+      const cambio = {};
+      cambio[campo] = global.firebase.firestore.FieldValue.arrayUnion(item);
+      await colPerfiles(idFamilia).doc(id).update(cambio);
+    },
+
+    async quitarDeLista(idFamilia, id, campo, item) {
+      const cambio = {};
+      cambio[campo] = global.firebase.firestore.FieldValue.arrayRemove(item);
+      await colPerfiles(idFamilia).doc(id).update(cambio);
     },
 
     /** Borra el perfil y lo desengancha de quienes lo señalaban: padre,
@@ -356,6 +540,9 @@
         const url = _urlDeFoto.get(d.id);
         if (url) { _urlDeFoto.delete(d.id); _fotoDeUrl.delete(url); }
       });
+      /* Y sus notas de voz, por la misma razón */
+      const audios = await colAudios(idFamilia).where('perfil', '==', id).get();
+      audios.docs.forEach((d) => lote.delete(d.ref));
 
       await lote.commit();
     },

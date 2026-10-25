@@ -5,6 +5,9 @@
 
      · Cualquiera puede LEER el álbum (es para enseñarlo a la familia).
      · Solo quien inició sesión con la clave familiar puede ESCRIBIR.
+     · Excepción: quien tiene un ENLACE DE APORTES vigente puede dejar
+       un aporte (voz, foto o recuerdo) en la bandeja, sin cuenta. No
+       puede leer la bandeja ni tocar nada más.
 
    La clave de config.js es pública por diseño; lo que de verdad
    protege los datos son estas reglas. Sin ellas, cualquiera con la
@@ -40,6 +43,117 @@ service cloud.firestore {
                               && request.resource.data.datos.size() < 900000;
         allow delete: if request.auth != null;
       }
+
+      /* Notas de voz ya aprobadas, una por documento (como las fotos). */
+      match /audios/{idAudio} {
+        allow read: if true;
+        allow create, update: if request.auth != null
+                              && request.resource.data.datos is string
+                              && request.resource.data.datos.size() < 900000
+                              && request.resource.data.datos.matches('^data:audio/.*');
+        allow delete: if request.auth != null;
+      }
+
+      /* Enlaces de aportes. El id ES el token: quien lo conoce puede
+         leer ESE enlace (get), pero nadie sin clave puede listarlos.
+         `usos` cuenta los aportes recibidos: sin clave solo se puede
+         subir de 1 en 1, hasta 40, y solo junto con el aporte que le
+         corresponde. Un enlace filtrado no puede llenar la base. */
+      match /enlaces/{token} {
+        allow get: if true;
+        allow list: if request.auth != null;
+        allow create: if request.auth != null
+                      && request.resource.data.keys().hasOnly(['etiqueta', 'personas', 'creado', 'vence', 'usos'])
+                      && token.size() >= 32
+                      && request.resource.data.usos == 0
+                      && request.resource.data.vence is timestamp
+                      && request.resource.data.vence <= request.time + duration.value(31, 'd');
+        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usos'])
+                      && request.resource.data.usos == resource.data.usos + 1
+                      && request.resource.data.usos <= 40
+                      && resource.data.vence > request.time
+                      && existsAfter(/databases/$(database)/documents/familias/$(idFamilia)/aportes/$(token + '_' + string(request.resource.data.usos)));
+        allow delete: if request.auth != null;
+      }
+
+      /* Aportes de familiares sin cuenta: el n-ésimo aporte de un enlace
+         se llama {token}_{n} y se crea junto con la subida de `usos`.
+         La grabación o la foto va aparte, en carga/datos, para que la
+         bandeja se pueda listar sin descargar audios. Solo la familia
+         (con la clave) los lee, los aprueba o los descarta. */
+      match /aportes/{idAporte} {
+        allow read, delete: if request.auth != null;
+        allow update: if false;
+        allow create: if aporteValido(idFamilia, idAporte);
+
+        match /carga/{doc} {
+          allow read, delete: if request.auth != null;
+          allow update: if false;
+          allow create: if doc == 'datos'
+                        && !exists(/databases/$(database)/documents/familias/$(idFamilia)/aportes/$(idAporte))
+                        && cargaValida(getAfter(/databases/$(database)/documents/familias/$(idFamilia)/aportes/$(idAporte)).data.tipo,
+                                       request.resource.data);
+        }
+      }
+    }
+
+    function cargaValida(tipo, c) {
+      return c.keys().hasOnly(['datos']) && c.datos is string && c.datos.size() < 900000
+          && ((tipo == 'voz' && c.datos.matches('^data:audio/.*'))
+              || (tipo == 'foto' && c.datos.matches('^data:image/.*')));
+    }
+
+    function aporteValido(idFamilia, idAporte) {
+      let d = request.resource.data;
+      let enlace = /databases/$(database)/documents/familias/$(idFamilia)/enlaces/$(d.token);
+      let carga = /databases/$(database)/documents/familias/$(idFamilia)/aportes/$(idAporte)/carga/datos;
+      return d.keys().hasOnly(['token', 'tipo', 'autor', 'relacion', 'persona_id', 'persona_nombre',
+                               'texto', 'duracion', 'creado'])
+          && d.keys().hasAll(['token', 'tipo', 'autor', 'creado'])
+          && d.token is string && d.token.size() >= 32 && d.token.size() <= 64
+          && exists(enlace) && get(enlace).data.vence > request.time
+          /* el aporte n-ésimo del enlace, con `usos` subido a n en la misma escritura */
+          && getAfter(enlace).data.usos == get(enlace).data.usos + 1
+          && idAporte == d.token + '_' + string(getAfter(enlace).data.usos)
+          && d.creado == request.time
+          && d.tipo in ['voz', 'foto', 'recuerdo']
+          && d.autor is string && d.autor.size() > 0 && d.autor.size() <= 60
+          && (!('relacion' in d) || (d.relacion is string && d.relacion.size() <= 40))
+          && (!('persona_id' in d) || (d.persona_id is string && d.persona_id.size() <= 100))
+          && (!('persona_nombre' in d) || (d.persona_nombre is string && d.persona_nombre.size() <= 120))
+          && (!('texto' in d) || (d.texto is string && d.texto.size() <= 4000))
+          && (!('duracion' in d) || (d.duracion is number && d.duracion >= 0 && d.duracion <= 400))
+          && ((d.tipo == 'recuerdo' && d.texto is string && d.texto.size() > 0)
+              || (d.tipo != 'recuerdo' && existsAfter(carga)));
+    }
+
+    /* Puentes entre familias. Sin clave solo se ven los ACEPTADOS (la
+       app los consulta con estado == 'aceptado'); propuestas y rechazos
+       quedan entre quienes editan. Al responder solo cambian la
+       aceptación de un lado y el estado. */
+    match /puentes/{idPuente} {
+      allow read: if request.auth != null || resource.data.estado == 'aceptado';
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasOnly(['fidA', 'pidA', 'nombreA', 'aceptaA',
+                                                              'fidB', 'pidB', 'nombreB', 'aceptaB',
+                                                              'puntaje', 'motivos', 'estado', 'creado'])
+                    && request.resource.data.fidA is string && request.resource.data.fidB is string
+                    && request.resource.data.pidA is string && request.resource.data.pidB is string
+                    && request.resource.data.fidA != request.resource.data.fidB
+                    && request.resource.data.motivos is list && request.resource.data.motivos.size() <= 8
+                    && request.resource.data.estado == 'propuesto';
+      allow update: if request.auth != null
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['aceptaA', 'aceptaB', 'estado'])
+                    && estadoCoherente(request.resource.data);
+      allow delete: if request.auth != null;
+    }
+
+    /* El estado sale de las dos respuestas, no se elige a mano */
+    function estadoCoherente(p) {
+      return (p.estado == 'aceptado' && p.aceptaA == true && p.aceptaB == true)
+          || (p.estado == 'rechazado' && (p.aceptaA == false || p.aceptaB == false))
+          || (p.estado == 'propuesto' && p.aceptaA != false && p.aceptaB != false
+              && !(p.aceptaA == true && p.aceptaB == true));
     }
 
     /* Todo lo demás, cerrado. */

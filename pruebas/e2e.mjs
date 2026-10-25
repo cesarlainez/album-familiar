@@ -48,7 +48,9 @@ function servir() {
 async function abrirChrome() {
   const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'album-e2e-'));
   const proc = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', '--user-data-dir=' + perfil,
-    '--no-first-run', '--no-default-browser-check', '--disable-extensions', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+    '--no-first-run', '--no-default-browser-check', '--disable-extensions',
+    /* micrófono falso: la página de aportes graba sin pedir permiso */
+    '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   const wsUrl = await new Promise((resolver, rechazar) => {
     let buf = '';
     proc.stderr.on('data', (d) => {
@@ -107,8 +109,10 @@ async function main() {
   await cdp('Page.enable');
   await cdp('Runtime.enable');
   await cdp('Page.addScriptToEvaluateOnNewDocument', { source: `document.addEventListener('DOMContentLoaded', () => {
+      const nodos = document.getElementById('nodos');
+      if (!nodos) return; /* aportar.html no tiene lienzo */
       new MutationObserver((m, o) => { if (document.querySelector('.nodo')) { window.__relojAlDibujar = document.getElementById('hilos').getCurrentTime(); o.disconnect(); } })
-        .observe(document.getElementById('nodos'), { childList: true }); });` });
+        .observe(nodos, { childList: true }); });` });
   await cdp('Performance.enable');
 
   const ev = async (expr) => {
@@ -495,6 +499,8 @@ async function main() {
   await cdp('Page.removeScriptToEvaluateOnNewDocument', { identifier: retardo });
   anotar('Con datos lentos (3 s), las chispas arrancan tras la entrada del árbol', cronologia.sinIntervalo === 0 && cronologia.primeraChispa >= cronologia.dibujo + 1.5, JSON.stringify(cronologia));
 
+  await propuestas({ cdp, ev, cargar, base, familia });
+
   anotar('Ningún error de JavaScript en toda la sesión', errores.length === 0, errores.slice(0, 3).join(' | '));
 
   cerrar();
@@ -503,6 +509,279 @@ async function main() {
   console.log(`\n${resultados.length - fallos.length}/${resultados.length} pruebas superadas`);
   fs.writeFileSync(path.join(os.tmpdir(), 'album-e2e-resultado.json'), JSON.stringify(resultados, null, 1));
   process.exit(fallos.length ? 1 : 0);
+}
+
+/* ═════ ATLAS, BUSCADOR, APORTES Y PUENTES ═════
+   Todo en ?modo=local: dos familias en localStorage (la real y una
+   "Familia_Jimenez" de prueba que comparte a Yolanda) y la página de
+   aportes con micrófono y archivo falsos. */
+async function propuestas({ cdp, ev, cargar, base, familia }) {
+  console.log('\nAtlas, buscador, aportes y puentes');
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+  const tecla = async (key, code, vk, texto) => {
+    await cdp('Input.dispatchKeyEvent', Object.assign({ type: 'keyDown', key, code, windowsVirtualKeyCode: vk }, texto ? { text: texto } : {}));
+    await cdp('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: vk });
+  };
+  const abrirFicha = async (id) => {
+    await ev(`document.querySelector('.nodo[data-id="${id}"]').focus()`);
+    await tecla('Enter', 'Enter', 13);
+    await espera(900);
+  };
+  const texto = (sel) => ev(`(document.querySelector(${JSON.stringify(sel)}) || {}).textContent || ''`);
+  const visible = (id) => ev(`!document.getElementById('${id}').hidden`);
+  const clicTexto = (sel, t) => ev(`(() => { const b = [...document.querySelectorAll(${JSON.stringify(sel)})].find((x) => x.textContent.trim() === ${JSON.stringify(t)}); if (b) b.click(); return !!b; })()`);
+
+  /* Datos: la familia real + una segunda familia que comparte a Yolanda */
+  const jimenez = [
+    { id_familia: 'Familia_Jimenez', id: 'yj', nombre_completo: 'Yolanda del Carmen Jiménez Benítez', fecha_nacimiento: '1944-03-01', id_pareja: ['cj'], id_padre: 'pj', galeria: [] },
+    { id_familia: 'Familia_Jimenez', id: 'cj', nombre_completo: 'Carlos Alfredo Laínez', id_pareja: ['yj'], galeria: [] },
+    { id_familia: 'Familia_Jimenez', id: 'pj', nombre_completo: 'Pedro Jiménez', galeria: [] },
+  ];
+  await ev(`localStorage.setItem('albumFamiliar:datos:v1', ${JSON.stringify(JSON.stringify(familia.concat(jimenez)))});
+            localStorage.removeItem('albumFamiliar:aportes:v1'); localStorage.removeItem('albumFamiliar:puentes:v1');`);
+  await cargar(base);
+
+  /* ── Lugares en el editor ── */
+  await abrirFicha('carlos-alfredo');
+  await ev("document.querySelector('[data-accion=\"editar\"]').click()");
+  await espera(400);
+  const opciones = await ev("document.getElementById('editLugarNacimiento').options.length");
+  anotar('El editor ofrece el catálogo de lugares (14 departamentos, 44 municipios y la diáspora)', opciones >= 1 + 14 + 44 + 20, opciones + ' opciones');
+  await ev(`document.getElementById('editLugarNacimiento').value = 'SV-CH-N';
+            document.getElementById('editLugarNacimientoDetalle').value = 'cantón El Carrizal';
+            document.getElementById('editLugarResidencia').value = 'US-LA';`);
+  await ev("document.querySelector('#fichaEditor button[type=submit]').click()");
+  await espera(1000);
+  const lugaresFicha = await texto('#modalLugares');
+  anotar('La ficha muestra dónde nació y dónde vivió', /Chalatenango Norte, Chalatenango · cantón El Carrizal/.test(lugaresFicha) && /Los Ángeles/.test(lugaresFicha), lugaresFicha);
+  const guardado = await ev("JSON.parse(localStorage.getItem('albumFamiliar:datos:v1')).find((p) => p.id === 'carlos-alfredo').lugares");
+  anotar('Los lugares quedan guardados en el perfil', guardado && guardado.nacimiento.clave === 'SV-CH-N' && guardado.residencia.clave === 'US-LA' && guardado.fallecimiento.clave === '');
+  const anioCarlos = await ev("JSON.parse(localStorage.getItem('albumFamiliar:datos:v1')).find((p) => p.id === 'carlos-alfredo').fecha_nacimiento");
+  anotar('Editar a alguien con solo el año de nacimiento NO borra el año', String(anioCarlos) === String(familia.find((p) => p.id === 'carlos-alfredo').fecha_nacimiento), String(anioCarlos));
+  await ev("document.querySelector('.carta__cerrar').click()"); await espera(700);
+
+  /* ── Buscador ── */
+  await tecla('/', 'Slash', 191, '/');
+  await espera(300);
+  anotar('La tecla / abre el buscador', await visible('panelBuscar'));
+  const buscar = async (q) => {
+    await ev(`(() => { const i = document.getElementById('buscarTexto'); i.value = ${JSON.stringify(q)}; i.dispatchEvent(new Event('input')); })()`);
+    await espera(400);
+    return ev("[...document.querySelectorAll('#buscarPersonas .resultado__titulo')].map((x) => x.textContent)");
+  };
+  const porSonido = await buscar('lainés');
+  anotar('Buscar «lainés» encuentra a los Laínez (por cómo suena)', porSonido.length >= 20, porSonido.length + ' resultados');
+  const porLugar = await buscar('carrizal');
+  anotar('Buscar por el cantón encuentra a quien nació ahí', porLugar.length === 1 && porLugar[0] === 'Carlos Alfredo Lainez', JSON.stringify(porLugar));
+  const porDecada = await buscar('carlos 1930s');
+  anotar('Buscar «carlos 1930s» filtra por década', porDecada.includes('Carlos Alfredo Lainez') && porDecada.every((n) => /carlos/i.test(n)), JSON.stringify(porDecada));
+  await buscar('jimenez');
+  const familias = await ev("[...document.querySelectorAll('#buscarFamilias .resultado__titulo')].map((x) => x.textContent)");
+  anotar('El buscador encuentra otras familias por apellido', familias.includes('Familia Jimenez'), JSON.stringify(familias));
+  await buscar('carrizal');
+  await tecla('Enter', 'Enter', 13);
+  await espera(1000);
+  anotar('Enter en el buscador abre la ficha del primer resultado', !(await visible('panelBuscar')) && (await texto('#modalNombre')) === 'Carlos Alfredo Lainez');
+  await ev("document.querySelector('.carta__cerrar').click()"); await espera(700);
+
+  /* ── Atlas ── */
+  await ev("document.getElementById('btnAtlas').click()");
+  await espera(400);
+  const atlasSV = await ev(`({ vivos: [...document.querySelectorAll('.atlas__punto--vivo')].map((g) => g.dataset.grupo),
+      apagados: document.querySelectorAll('.atlas__punto:not(.atlas__punto--vivo)').length,
+      arcos: document.querySelectorAll('.atlas__arco').length, contorno: !!document.querySelector('.atlas__contorno') })`);
+  anotar('Atlas «El Salvador»: Chalatenango brilla, el resto de departamentos queda tenue y hay un arco al exterior',
+    atlasSV.vivos.includes('SV-CH') && atlasSV.vivos.includes('EXTERIOR') && atlasSV.apagados === 13 && atlasSV.arcos === 1 && atlasSV.contorno, JSON.stringify(atlasSV));
+  await ev("document.querySelector('.atlas__punto[data-grupo=\"SV-CH\"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))");
+  await espera(300);
+  const enCH = await ev("[...document.querySelectorAll('#atlasLista .resultado__titulo')].map((x) => x.textContent)");
+  anotar('Tocar una estrella lista a quién nació ahí', enCH.length === 1 && enCH[0] === 'Carlos Alfredo Lainez', JSON.stringify(enCH));
+  await ev("(() => { const r = document.getElementById('atlasDecada'); r.value = '1920'; r.dispatchEvent(new Event('input')); })()");
+  await espera(200);
+  const en1920 = await ev("document.querySelectorAll('.atlas__punto--vivo').length");
+  await ev("(() => { const r = document.getElementById('atlasDecada'); r.value = '1930'; r.dispatchEvent(new Event('input')); })()");
+  await espera(200);
+  const en1930 = await ev("document.querySelectorAll('.atlas__punto--vivo').length");
+  anotar('La línea de tiempo esconde a quien aún no había nacido (1920s: nadie; 1930s: Carlos)', en1920 === 0 && en1930 === 2, en1920 + ' / ' + en1930);
+  await ev("document.querySelector('[data-vista=\"mundo\"]').click()");
+  await espera(300);
+  const mundo = await ev(`({ vivos: [...document.querySelectorAll('.atlas__punto--vivo')].map((g) => g.dataset.grupo), arcos: document.querySelectorAll('.atlas__arco').length })`);
+  anotar('Atlas «Mundo»: El Salvador → Los Ángeles', mundo.vivos.includes('SV') && mundo.vivos.includes('US-LA') && mundo.arcos === 1, JSON.stringify(mundo));
+  await ev("document.querySelector('.atlas__punto[data-grupo=\"US-LA\"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))");
+  await espera(300);
+  await ev("document.querySelector('#atlasLista .resultado').click()");
+  await espera(1000);
+  anotar('Desde el Atlas se abre la ficha de la persona', (await ev("document.getElementById('atlas').hidden")) && (await texto('#modalNombre')) === 'Carlos Alfredo Lainez');
+  await ev("document.querySelector('.carta__cerrar').click()"); await espera(700);
+  await ev("document.getElementById('btnAtlas').click()"); await espera(300);
+  await tecla('Escape', 'Escape', 27);
+  await espera(300);
+  anotar('Escape cierra el Atlas', await ev("document.getElementById('atlas').hidden"));
+
+  /* ── Aportes: enlace ── */
+  await ev("document.getElementById('btnAportes').click()");
+  await espera(500);
+  await ev("document.getElementById('aporteNuevoEnlace').click()");
+  await espera(800);
+  const wa = await ev("(document.querySelector('#aporteEnlaces a') || {}).href || ''");
+  const urlAporte = (/(http:\/\/\S+aportar\.html\S+)/.exec(decodeURIComponent(wa)) || [])[1];
+  anotar('Crear enlace de aportes: queda vigente 14 días y listo para WhatsApp', /^https:\/\/wa\.me\/\?text=/.test(wa) && !!urlAporte && /Vigente hasta/.test(await texto('#aporteEnlaces')), urlAporte);
+  const token = new URL(urlAporte).searchParams.get('t');
+  anotar('El token del enlace es largo y aleatorio (≥ 32 caracteres)', token && token.length >= 32, token && token.length + ' caracteres');
+
+  /* ── Aportes: la página del familiar ── */
+  const cargarAportar = async (url) => {
+    await cdp('Page.navigate', { url });
+    for (let i = 0; i < 60; i++) {
+      await espera(100);
+      if (await ev("document.readyState === 'complete' && (!document.getElementById('aportarForm').hidden || !document.getElementById('aportarInvalido').hidden)").catch(() => false)) break;
+    }
+  };
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await cargarAportar(urlAporte);
+  anotar('La página de aportes abre con el nombre de la familia y la lista de personas',
+    (await texto('#aportarFamilia')) === 'Álbum de la Familia Lainez' && (await ev("document.getElementById('aportarPersona').options.length")) === 1 + 62 + 1);
+  anotar('La página de aportes cabe en un celular (sin desplazamiento horizontal)', await ev("document.documentElement.scrollWidth <= innerWidth"));
+
+  /* recuerdo */
+  await ev(`document.getElementById('aportarAutor').value = 'Ana';
+            document.getElementById('aportarRelacion').value = 'nieta';
+            document.getElementById('aportarPersona').value = 'carlos-alfredo';
+            document.querySelector('[data-tipo="recuerdo"]').click();`);
+  await ev("document.getElementById('aportarEnviar').click()");
+  await espera(300);
+  anotar('Sin texto, el recuerdo no se envía y lo explica', /Escribe el recuerdo/.test(await texto('#aportarError')));
+  await ev("document.getElementById('aportarTexto').value = 'Silbaba boleros mientras arreglaba radios.'; document.getElementById('aportarEnviar').click()");
+  await espera(600);
+  anotar('Enviar un recuerdo muestra el agradecimiento', await visible('aportarGracias'));
+
+  /* voz (micrófono falso) */
+  await ev("document.getElementById('aportarOtro').click()");
+  await ev("document.querySelector('[data-tipo=\"voz\"]').click(); document.getElementById('aportarGrabar').click()");
+  await espera(2600);
+  await ev("document.getElementById('aportarGrabar').click()");
+  await espera(1200);
+  const voz = await ev("({ src: document.getElementById('aportarAudio').src.slice(0, 11), visible: !document.getElementById('aportarAudio').hidden, reloj: document.getElementById('aportarReloj').textContent })");
+  anotar('Grabar la voz deja un audio para escuchar antes de enviar', voz.visible && voz.src === 'data:audio/', JSON.stringify(voz));
+  await ev("document.getElementById('aportarEnviar').click()");
+  await espera(800);
+  anotar('Enviar la nota de voz', await visible('aportarGracias'));
+
+  /* foto (archivo real del proyecto) */
+  await ev("document.getElementById('aportarOtro').click()");
+  await ev("document.querySelector('[data-tipo=\"foto\"]').click()");
+  const { root } = await cdp('DOM.getDocument');
+  const { nodeId } = await cdp('DOM.querySelector', { nodeId: root.nodeId, selector: '#aportarArchivo' });
+  await cdp('DOM.setFileInputFiles', { nodeId, files: [path.join(RAIZ, 'og-image.jpg')] });
+  await espera(1200);
+  anotar('Elegir una foto la reduce y la muestra', await ev("!document.getElementById('aportarVista').hidden && document.getElementById('aportarVista').src.startsWith('data:image/jpeg')"));
+  await ev("document.getElementById('aportarEnviar').click()");
+  await espera(800);
+  anotar('Enviar la foto', await visible('aportarGracias'));
+
+  /* tope de aportes por enlace (el mismo que imponen las reglas) */
+  const tope = await ev(`(async () => { const a = JSON.parse(localStorage.getItem('albumFamiliar:aportes:v1'));
+      const e = a.enlaces.Familia_Lainez[${JSON.stringify(token)}]; const antes = e.usos; e.usos = 40;
+      localStorage.setItem('albumFamiliar:aportes:v1', JSON.stringify(a));
+      let msg = ''; try { await AlbumDatos.aportes.enviar('Familia_Lainez', ${JSON.stringify(token)}, { tipo: 'recuerdo', autor: 'X', texto: 'y' }); } catch (err) { msg = err.message; }
+      const b = JSON.parse(localStorage.getItem('albumFamiliar:aportes:v1')); b.enlaces.Familia_Lainez[${JSON.stringify(token)}].usos = antes;
+      localStorage.setItem('albumFamiliar:aportes:v1', JSON.stringify(b)); return { antes, msg }; })()`);
+  anotar('Un enlace admite como mucho 40 aportes (llevaba ' + tope.antes + ')', tope.antes === 3 && /muchos aportes/.test(tope.msg), tope.msg);
+
+  /* enlace inventado */
+  await cargarAportar(urlAporte.replace(token, 'token-falso-' + 'x'.repeat(20)));
+  anotar('Un enlace inventado no deja aportar', (await visible('aportarInvalido')) && !(await visible('aportarForm')));
+
+  /* ── Aportes: bandeja ── */
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+  await cargar(base);
+  await espera(300);
+  anotar('El botón Aportes avisa cuántos hay por revisar', (await texto('#insigniaAportes')) === '3');
+  await ev("document.getElementById('btnAportes').click()");
+  await espera(600);
+  anotar('La bandeja lista los 3 aportes con su autor', (await ev("document.querySelectorAll('#aporteBandeja .aporte').length")) === 3 && /Ana \(nieta\)/.test(await texto('#aporteBandeja')));
+  for (let i = 0; i < 3; i++) {
+    await ev("document.querySelector('#aporteBandeja .aporte .btn-crud--primario').click()");
+    await espera(1200);
+  }
+  anotar('Aprobar los 3 vacía la bandeja', (await ev("document.querySelectorAll('#aporteBandeja .aporte').length")) === 0 && (await ev("document.getElementById('insigniaAportes').hidden")));
+  const carlos = await ev("JSON.parse(localStorage.getItem('albumFamiliar:datos:v1')).find((p) => p.id === 'carlos-alfredo')");
+  anotar('Lo aprobado queda en la ficha: 1 voz, 1 recuerdo y 1 foto más', carlos.voces.length === 1 && /^audio:/.test(carlos.voces[0].ref) && carlos.recuerdos.length === 1 && carlos.galeria.length === 1,
+    JSON.stringify({ voces: carlos.voces.length, recuerdos: carlos.recuerdos.length, fotos: carlos.galeria.length }));
+  await ev("document.querySelector('#panelAportes [data-cerrar-panel]').click()");
+  await abrirFicha('carlos-alfredo');
+  anotar('La ficha muestra el recuerdo con su autora', /Silbaba boleros/.test(await texto('#modalRecuerdos')) && /Ana \(nieta\)/.test(await texto('#modalRecuerdos')));
+  await ev("document.querySelector('.voz__escuchar').click()");
+  await espera(600);
+  anotar('«Escuchar» carga la nota de voz en un reproductor', await ev("!!document.querySelector('#modalVoces audio') && document.querySelector('#modalVoces audio').src.startsWith('data:audio/')"));
+  await ev("document.querySelector('.carta__cerrar').click()"); await espera(700);
+
+  /* revocar */
+  await ev("document.getElementById('btnAportes').click()"); await espera(500);
+  await clicTexto('#aporteEnlaces button', 'Revocar');
+  await espera(600);
+  await cargarAportar(urlAporte);
+  anotar('Un enlace revocado deja de servir', await visible('aportarInvalido'));
+  await cargar(base);
+
+  /* ── Respaldo con voces ── */
+  await ev(`window.__zip = null; const o = URL.createObjectURL.bind(URL); URL.createObjectURL = (b) => { window.__zip = b; return o(b); };`);
+  await ev("document.getElementById('descargarRespaldo').click()");
+  for (let i = 0; i < 40 && !(await ev('!!window.__zip')); i++) await espera(150);
+  const zip = await ev(`(async () => { const { manifiesto, archivos } = await AlbumRespaldo.leer(new File([window.__zip], 'copia.zip'));
+      const c = manifiesto.perfiles.find((p) => p.id === 'carlos-alfredo');
+      window.__copia = { manifiesto, archivos };
+      return { voces: manifiesto.total_voces, ref: c.voces[0].ref, enZip: [...archivos.keys()].some((k) => /^voces\\//.test(k)), lugares: c.lugares.nacimiento.clave, recuerdos: c.recuerdos.length }; })()`);
+  anotar('La copia .zip incluye las voces como audio, los lugares y los recuerdos', zip.voces === 1 && /^voces\//.test(zip.ref) && zip.enZip && zip.lugares === 'SV-CH-N' && zip.recuerdos === 1, JSON.stringify(zip));
+  const restaurada = await ev(`(async () => { await AlbumRespaldo.restaurar(window.__copia.manifiesto, window.__copia.archivos, 'Familia_Restaurada');
+      const c = (await AlbumDatos.obtenerPerfiles('Familia_Restaurada')).find((p) => p.id === 'carlos-alfredo');
+      const audio = await AlbumDatos.aportes.leerAudio('Familia_Restaurada', c.voces[0].ref);
+      return { ref: c.voces[0].ref, audio: audio.slice(0, 11) }; })()`);
+  anotar('Restaurar la copia recupera la nota de voz', /^audio:/.test(restaurada.ref) && restaurada.audio === 'data:audio/', JSON.stringify(restaurada));
+  await ev("(() => { const d = JSON.parse(localStorage.getItem('albumFamiliar:datos:v1')).filter((p) => p.id_familia !== 'Familia_Restaurada'); localStorage.setItem('albumFamiliar:datos:v1', JSON.stringify(d)); })()");
+
+  /* ── Puentes ── */
+  await cargar(base);
+  await ev("document.getElementById('btnPuentes').click()"); await espera(500);
+  await ev("document.getElementById('puenteBuscar').click()");
+  await espera(1500);
+  const cand = await texto('#puenteLista');
+  anotar('Puentes: encuentra a Yolanda en la Familia Jimenez por su cónyuge en común', /Yolanda del Carmen Jimenez Benitez de Lainez podría ser Yolanda del Carmen Jiménez Benítez/.test(cand) && /mismo cónyuge: Carlos Alfredo Lainez/.test(cand), cand.slice(0, 160));
+  const propuestos = await ev("[...document.querySelectorAll('#puenteLista .puente__texto')].map((x) => x.textContent)");
+  anotar('Puentes: propone también a Carlos (su cónyuge Yolanda coincide) y a nadie más', propuestos.length === 2 && propuestos.some((t) => /^Carlos Alfredo Lainez podría ser Carlos Alfredo Laínez/.test(t)) && !propuestos.some((t) => /Pedro/.test(t)), JSON.stringify(propuestos));
+  await clicTexto('#puenteLista button', 'Proponer puente');
+  await espera(800);
+  anotar('Proponer deja el puente esperando a la otra familia', /Esperando a la otra familia/.test(await texto('#puenteLista')));
+
+  await cargar(base + '&familia=Familia_Jimenez');
+  await espera(400);
+  anotar('La otra familia ve la propuesta en su insignia', (await texto('#insigniaPuentes')) === '1');
+  await ev("document.getElementById('btnPuentes').click()"); await espera(500);
+  const recibida = await texto('#puenteLista');
+  anotar('Antes de aceptar no se revela el nombre de la familia que propone', /Otra familia registrada/.test(recibida) && !/Familia Lainez/.test(recibida));
+  await clicTexto('#puenteLista button', 'Aceptar');
+  await espera(800);
+  anotar('Al aceptar las dos, el puente queda activo', /Puentes activos/.test(await texto('#puenteLista')));
+  await ev("document.querySelector('#panelPuentes [data-cerrar-panel]').click()");
+  await espera(300);
+  anotar('La tarjeta de Yolanda lleva el sello dorado del puente', await ev("document.querySelector('.nodo[data-id=\"yj\"]').classList.contains('nodo--puente') && /Familia Lainez/.test(document.querySelector('.nodo[data-id=\"yj\"] .nodo__puente').textContent)"));
+  await abrirFicha('yj');
+  anotar('Su ficha enlaza al otro árbol', /También en la Familia Lainez como Yolanda/.test(await texto('#modalPuentes')));
+  await clicTexto('#modalPuentes button', 'Ver allí');
+  await espera(2200);
+  anotar('«Ver allí» cambia de familia y abre a la misma persona', (await texto('#tenantLabel')) === 'Familia Lainez' && (await texto('#modalNombre')) === 'Yolanda del Carmen Jimenez Benitez de Lainez' && (await ev("document.getElementById('flipCapa').classList.contains('abierta')")));
+  await ev("document.querySelector('.carta__cerrar').click()"); await espera(700);
+
+  /* ── Celular: el encabezado con más botones sigue cabiendo ── */
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await cargar(base);
+  const cabe = await ev(`({ botones: [...document.querySelectorAll('.cabecera__acciones > *')].filter((b) => b.offsetParent).every((b) => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth; }),
+      sinScroll: document.documentElement.scrollWidth <= innerWidth })`);
+  anotar('Celular: todos los botones del encabezado caben en pantalla', cabe.botones && cabe.sinScroll, JSON.stringify(cabe));
+  await ev("document.getElementById('btnAtlas').click()"); await espera(400);
+  anotar('Celular: el Atlas cabe y su mapa se ve', await ev("(() => { const r = document.getElementById('atlasMapa').getBoundingClientRect(); return r.width > 300 && r.height > 150 && document.documentElement.scrollWidth <= innerWidth; })()"));
+  await ev("document.getElementById('atlasCerrar').click()");
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
 }
 
 main().catch((e) => { console.error('ERROR DEL ARNÉS:', e); process.exit(2); });

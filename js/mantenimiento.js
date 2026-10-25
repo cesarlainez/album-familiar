@@ -41,13 +41,44 @@
       parejas: $('editParejas'),
       cancelar: $('editCancelar'),
       archivoFoto: $('archivoFoto'),
+      lugar: {
+        nacimiento: [$('editLugarNacimiento'), $('editLugarNacimientoDetalle')],
+        residencia: [$('editLugarResidencia'), $('editLugarResidenciaDetalle')],
+        fallecimiento: [$('editLugarFallecimiento'), $('editLugarFallecimientoDetalle')],
+      },
     };
+    this._llenarLugares();
 
     /* Al abrir cualquier perfil, volver siempre a modo lectura. */
     this.perfil.alAbrir = () => this.modoLectura();
 
     this._conectar();
   }
+
+  /** Los tres selectores de lugar comparten el catálogo: cada departamento
+   *  es un grupo con el departamento entero y sus municipios de 2024;
+   *  después, las ciudades de la diáspora. Se llenan una sola vez. */
+  Mantenimiento.prototype._llenarLugares = function () {
+    if (!global.AlbumLugares) return;
+    const plantilla = document.createDocumentFragment();
+    plantilla.appendChild(new Option('— Sin indicar —', ''));
+    AlbumLugares.DEPARTAMENTOS.forEach(([cod, nombre, , , municipios]) => {
+      const grupo = document.createElement('optgroup');
+      grupo.label = nombre + ' (El Salvador)';
+      grupo.appendChild(new Option(nombre + ' — todo el departamento', 'SV-' + cod));
+      municipios.forEach((punto) => grupo.appendChild(new Option(nombre + ' ' + punto, 'SV-' + cod + '-' + punto[0])));
+      plantilla.appendChild(grupo);
+    });
+    AlbumLugares.MUNDO.forEach(([region, ciudades]) => {
+      const grupo = document.createElement('optgroup');
+      grupo.label = region;
+      ciudades.forEach(([clave, nombre]) => grupo.appendChild(new Option(nombre, clave)));
+      plantilla.appendChild(grupo);
+    });
+    Object.values(this.refs.lugar).forEach(([sel]) => {
+      if (sel) sel.appendChild(plantilla.cloneNode(true));
+    });
+  };
 
   /* ── Alternancia lectura / edición ───────────────────────── */
 
@@ -105,8 +136,8 @@
       }
     }
     r.nombre.value = p.nombre_completo || '';
-    r.nacimiento.value = p.fecha_nacimiento || '';
-    r.fallecimiento.value = p.fecha_fallecimiento || '';
+    this._prepararFecha(r.nacimiento, p.fecha_nacimiento);
+    this._prepararFecha(r.fallecimiento, p.fecha_fallecimiento);
     r.disciplina.value = p.disciplina_artistica || '';
     r.obra.value = p.obra_maestra || '';
     r.bio.value = p.biografia || '';
@@ -115,6 +146,24 @@
     r.foto2.value = g[1] || '';
     r.foto3.value = g[2] || '';
     r.foto4.value = g[3] || '';
+
+    if (global.AlbumLugares) {
+      const ls = AlbumLugares.lugaresDe(p);
+      Object.keys(r.lugar).forEach((tipo) => {
+        const [sel, detalle] = r.lugar[tipo];
+        sel.querySelectorAll('option[data-desconocido]').forEach((o) => o.remove());
+        sel.value = ls[tipo].clave;
+        if (sel.value !== ls[tipo].clave) {
+          /* Una clave que este catálogo no conoce (de una versión futura o
+             de otra fuente) se conserva tal cual: guardar no la borra. */
+          const op = new Option('Guardado: ' + ls[tipo].clave, ls[tipo].clave);
+          op.dataset.desconocido = '1';
+          sel.appendChild(op);
+          sel.value = ls[tipo].clave;
+        }
+        detalle.value = ls[tipo].detalle;
+      });
+    }
 
     /* Selectores de relaciones: elegir entre las personas que YA existen
        en la familia. Se excluyen las opciones que romperían el árbol:
@@ -161,6 +210,41 @@
     r.nombre.select();
   };
 
+  /* ── Fechas incompletas ──────────────────────────────────────
+     Muchas fechas reales se conocen solo por el año ("1938"). Un
+     <input type="date"> no puede mostrarlas: queda vacío, y guardar la
+     ficha (aunque fuera para cambiar una foto) borraba el año. Ahora el
+     año se conserva mientras nadie toque el campo, y se avisa debajo. */
+  const FECHA_COMPLETA = /^\d{4}-\d{2}-\d{2}$/;
+
+  Mantenimiento.prototype._prepararFecha = function (input, valor) {
+    const original = valor == null ? '' : String(valor);
+    input.value = FECHA_COMPLETA.test(original) ? original : '';
+    input.dataset.original = original;
+    input.dataset.tocado = '';
+    if (!input._oyeCambios) {
+      input._oyeCambios = true;
+      input.addEventListener('input', () => { input.dataset.tocado = '1'; });
+    }
+    let pista = input.parentNode.querySelector('.campo__pista');
+    if (!pista) {
+      pista = document.createElement('small');
+      pista.className = 'campo__pista';
+      input.insertAdjacentElement('afterend', pista);
+    }
+    const parcial = original && !FECHA_COMPLETA.test(original);
+    pista.textContent = parcial ? 'Guardado: ' + original + '. Elige una fecha solo si la conoces completa.' : '';
+    pista.hidden = !parcial;
+  };
+
+  Mantenimiento.prototype._leerFecha = function (input) {
+    if (input.value) return input.value;
+    const original = input.dataset.original || '';
+    /* Sin tocar y con una fecha que el control no sabe mostrar: se queda */
+    if (!input.dataset.tocado && original && !FECHA_COMPLETA.test(original)) return original;
+    return null;
+  };
+
   /* ── Operaciones ─────────────────────────────────────────── */
 
   Mantenimiento.prototype.guardar = async function () {
@@ -175,8 +259,8 @@
 
     const cambios = {
       nombre_completo: r.nombre.value.trim() || 'Sin nombre',
-      fecha_nacimiento: r.nacimiento.value || null,
-      fecha_fallecimiento: r.fallecimiento.value || null,
+      fecha_nacimiento: this._leerFecha(r.nacimiento),
+      fecha_fallecimiento: this._leerFecha(r.fallecimiento),
       disciplina_artistica: r.disciplina.value.trim(),
       obra_maestra: r.obra.value.trim(),
       biografia: r.bio.value.trim(),
@@ -188,6 +272,19 @@
       id_madre: r.madre.value || null,
       id_pareja: parejasSeleccionadas,
     };
+
+    /* Lugares: se escriben los tres tipos siempre completos, así un
+       "merge" en la nube nunca deja un lugar viejo a medias. */
+    if (global.AlbumLugares) { // sin catálogo cargado no se tocan
+      const lugares = {};
+      let hayLugar = false;
+      Object.keys(r.lugar).forEach((tipo) => {
+        const [sel, detalle] = r.lugar[tipo];
+        lugares[tipo] = { clave: sel.value || '', detalle: detalle.value.trim().slice(0, 120) };
+        if (lugares[tipo].clave || lugares[tipo].detalle) hayLugar = true;
+      });
+      cambios.lugares = hayLugar ? lugares : null;
+    }
 
     try {
       await AlbumDatos.actualizar(p.id_familia, p.id, cambios);

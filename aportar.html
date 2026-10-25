@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es" class="pagina-aportar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aportar al Álbum Familiar</title>
+  <meta name="description" content="Graba una nota de voz, sube una foto o escribe un recuerdo para el álbum de tu familia. Sin crear cuenta." />
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <meta name="theme-color" content="#0b0b0b" />
+  <meta property="og:title" content="Aporta al Álbum Familiar" />
+  <meta property="og:description" content="Graba una nota de voz, sube una foto o escribe un recuerdo. No hace falta registrarse." />
+  <meta property="og:image" content="https://cesarlainez.github.io/album-familiar/og-image.jpg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Montserrat:wght@200;300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/galeria.css?v=25" />
+</head>
+<body>
+  <main class="aportar">
+    <header class="aportar__cabeza">
+      <p class="cabecera__titulo">Álbum Familiar</p>
+      <h1 class="aportar__titulo" id="aportarFamilia">Cargando…</h1>
+    </header>
+
+    <!-- Enlace no válido o vencido -->
+    <section class="aportar__caja" id="aportarInvalido" hidden>
+      <p class="aportar__grande">Este enlace ya no sirve.</p>
+      <p class="panel__nota">Puede que haya vencido o que la familia lo haya revocado. Pide uno nuevo a quien te lo envió.</p>
+    </section>
+
+    <!-- Formulario -->
+    <form class="aportar__caja" id="aportarForm" hidden novalidate>
+      <p class="panel__nota">Tu voz, una foto o un recuerdo ayudan a que la historia no se pierda. Nada se publica hasta que la familia lo revise.</p>
+
+      <label class="campo">
+        <span class="campo__etiqueta">Tu nombre</span>
+        <input class="campo__input aportar__input" id="aportarAutor" type="text" maxlength="60" autocomplete="name" required />
+      </label>
+      <label class="campo">
+        <span class="campo__etiqueta">Parentesco (opcional)</span>
+        <input class="campo__input aportar__input" id="aportarRelacion" type="text" maxlength="40" placeholder="nieta, sobrino, vecina…" />
+      </label>
+      <label class="campo">
+        <span class="campo__etiqueta">¿De quién trata?</span>
+        <select class="campo__input aportar__input" id="aportarPersona"></select>
+      </label>
+      <label class="campo" id="aportarOtraFila" hidden>
+        <span class="campo__etiqueta">Escribe su nombre</span>
+        <input class="campo__input aportar__input" id="aportarOtra" type="text" maxlength="120" />
+      </label>
+
+      <div class="aportar__tipos" role="tablist" aria-label="Qué quieres aportar">
+        <button class="aportar__tipo activo" type="button" role="tab" aria-selected="true" data-tipo="voz"><span aria-hidden="true">🎙</span> Grabar mi voz</button>
+        <button class="aportar__tipo" type="button" role="tab" aria-selected="false" data-tipo="foto"><span aria-hidden="true">📷</span> Subir una foto</button>
+        <button class="aportar__tipo" type="button" role="tab" aria-selected="false" data-tipo="recuerdo"><span aria-hidden="true">✍</span> Escribir un recuerdo</button>
+      </div>
+
+      <!-- Voz -->
+      <section class="aportar__seccion" data-seccion="voz">
+        <button class="aportar__grabar" id="aportarGrabar" type="button" aria-live="polite">● Grabar</button>
+        <p class="aportar__reloj" id="aportarReloj">Hasta 3 minutos</p>
+        <audio class="voz__audio" id="aportarAudio" controls hidden></audio>
+        <p class="panel__nota" id="aportarVozAviso" hidden></p>
+      </section>
+
+      <!-- Foto -->
+      <section class="aportar__seccion" data-seccion="foto" hidden>
+        <label class="btn-crud aportar__elegir">
+          Elegir o tomar una foto
+          <input id="aportarArchivo" type="file" accept="image/*" hidden />
+        </label>
+        <img class="aporte__foto" id="aportarVista" alt="Vista previa de la foto" hidden />
+      </section>
+
+      <label class="campo">
+        <span class="campo__etiqueta" id="aportarTextoEtiqueta">¿Quieres contar algo más? (opcional)</span>
+        <textarea class="campo__input campo__area aportar__input" id="aportarTexto" rows="4" maxlength="4000"></textarea>
+      </label>
+
+      <p class="candado__error" id="aportarError" role="alert" hidden></p>
+      <button class="btn-crud btn-crud--primario aportar__enviar" id="aportarEnviar" type="submit">Enviar a la familia</button>
+    </form>
+
+    <!-- Gracias -->
+    <section class="aportar__caja" id="aportarGracias" hidden>
+      <p class="aportar__grande">¡Gracias!</p>
+      <p class="panel__nota">La familia revisará tu aporte y lo pondrá en el álbum.</p>
+      <button class="btn-crud btn-crud--primario" id="aportarOtro" type="button">Enviar otro</button>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore-compat.js"></script>
+  <script src="js/config.js?v=25"></script>
+  <script src="js/servicios/firebase.js?v=25"></script>
+  <script src="js/datos.js?v=25"></script>
+  <script src="js/aportar.js?v=25"></script>
+</body>
+</html>

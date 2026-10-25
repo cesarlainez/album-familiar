@@ -54,6 +54,9 @@
         id_padre: null,
         id_madre: null,
         id_pareja: [],
+        lugares: null, // { nacimiento|residencia|fallecimiento: {clave, detalle} } — ver lugares.js
+        voces: [], // notas de voz aprobadas: [{ref, autor, fecha, duracion}] — ver aportes.js
+        recuerdos: [], // recuerdos escritos aprobados: [{texto, autor, fecha}]
       },
       o
     );
@@ -123,11 +126,245 @@
   let _huella = null; // estructura del último layout calculado
   let _memo = null; // sus posiciones
 
+  /* ── Aportes sin cuenta en modo local ───────────────────────
+     Enlaces, aportes pendientes y notas de voz aprobadas, en su propia
+     clave de localStorage. Es para maquetar y para las pruebas: las
+     notas de voz pesan cientos de KB y localStorage da unos 5 MB. */
+  const CLAVE_APORTES = 'albumFamiliar:aportes:v1';
+
+  function almacenAportes() {
+    try {
+      const crudo = global.localStorage && localStorage.getItem(CLAVE_APORTES);
+      const a = crudo ? JSON.parse(crudo) : null;
+      if (a && typeof a === 'object') {
+        return { enlaces: a.enlaces || {}, aportes: a.aportes || {}, audios: a.audios || {} };
+      }
+    } catch (e) {
+      console.warn('[AlbumDatos] No se pudieron leer los aportes locales:', e);
+    }
+    return { enlaces: {}, aportes: {}, audios: {} };
+  }
+
+  function guardarAportes(a) {
+    try {
+      localStorage.setItem(CLAVE_APORTES, JSON.stringify(a));
+    } catch (e) {
+      /* Lleno: se avisa arriba, no se pierde nada a escondidas */
+      throw new Error('No cabe en el almacenamiento de este navegador (' + (e && e.name) + ').');
+    }
+  }
+
+  /** Token largo y aleatorio: quien lo tiene puede aportar, así que no
+   *  debe poder adivinarse (24 bytes = 192 bits). */
+  function tokenAleatorio() {
+    const b = new Uint8Array(24);
+    global.crypto.getRandomValues(b);
+    return btoa(String.fromCharCode.apply(null, b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  /** Lo que la nube también comprueba en sus reglas; aquí se valida antes
+   *  de enviar para dar un mensaje claro en vez de un "permiso denegado". */
+  const LIMITES_APORTE = { autor: 60, relacion: 40, texto: 4000, datos: 900000 };
+  const MAX_USOS_ENLACE = 40; // aportes por enlace (también en las reglas)
+
+  function validarAporte(a) {
+    if (['voz', 'foto', 'recuerdo'].indexOf(a.tipo) === -1) throw new Error('Tipo de aporte desconocido.');
+    if (!String(a.autor || '').trim()) throw new Error('Escribe tu nombre para que la familia sepa quién aporta.');
+    if (String(a.autor).length > LIMITES_APORTE.autor) throw new Error('El nombre es demasiado largo.');
+    if (String(a.relacion || '').length > LIMITES_APORTE.relacion) throw new Error('El parentesco es demasiado largo.');
+    if (String(a.texto || '').length > LIMITES_APORTE.texto) throw new Error('El recuerdo pasa de 4 000 letras.');
+    if (a.tipo === 'recuerdo' && !String(a.texto || '').trim()) throw new Error('Escribe el recuerdo antes de enviarlo.');
+    if (a.tipo !== 'recuerdo') {
+      if (!/^data:(audio|image)\//.test(String(a.datos || ''))) throw new Error('Falta la grabación o la foto.');
+      if (String(a.datos).length > LIMITES_APORTE.datos) throw new Error('El archivo es demasiado pesado.');
+    }
+  }
+
+  /** Forma única de un aporte, la misma en local y en la nube. */
+  function filaAporte(a) {
+    return {
+      tipo: a.tipo,
+      autor: String(a.autor || '').trim().slice(0, LIMITES_APORTE.autor),
+      relacion: String(a.relacion || '').trim().slice(0, LIMITES_APORTE.relacion),
+      persona_id: a.persona_id || '',
+      persona_nombre: String(a.persona_nombre || '').slice(0, 120),
+      texto: String(a.texto || '').trim().slice(0, LIMITES_APORTE.texto),
+      datos: a.tipo === 'recuerdo' ? '' : String(a.datos || ''),
+      duracion: Math.max(0, Math.round(Number(a.duracion) || 0)),
+    };
+  }
+
+  const aportesLocales = {
+    async crearEnlace(fid, info) {
+      const a = almacenAportes();
+      const token = tokenAleatorio();
+      const creado = Date.now();
+      const vence = creado + (info.dias || 14) * 86400000;
+      a.enlaces[fid] = a.enlaces[fid] || {};
+      a.enlaces[fid][token] = { etiqueta: info.etiqueta || fid, personas: info.personas || [], creado, vence, usos: 0 };
+      guardarAportes(a);
+      return { token, creado, vence, usos: 0 };
+    },
+    async listarEnlaces(fid) {
+      const e = almacenAportes().enlaces[fid] || {};
+      return Object.keys(e).map((token) => ({ token, creado: e[token].creado, vence: e[token].vence, usos: e[token].usos || 0 }))
+        .sort((x, y) => y.creado - x.creado);
+    },
+    async revocarEnlace(fid, token) {
+      const a = almacenAportes();
+      if (a.enlaces[fid]) delete a.enlaces[fid][token];
+      guardarAportes(a);
+    },
+    async leerEnlace(fid, token) {
+      const e = (almacenAportes().enlaces[fid] || {})[token];
+      if (!e || e.vence < Date.now()) return null;
+      return { etiqueta: e.etiqueta, personas: e.personas || [], vence: e.vence, usos: e.usos || 0 };
+    },
+    async enviar(fid, token, aporte) {
+      const a = almacenAportes();
+      const e = (a.enlaces[fid] || {})[token];
+      if (!e || e.vence < Date.now()) throw new Error('El enlace ya no es válido. Pide uno nuevo a tu familia.');
+      /* Mismo tope que imponen las reglas de la nube */
+      const n = (e.usos || 0) + 1;
+      if (n > MAX_USOS_ENLACE) throw new Error('Este enlace ya recibió muchos aportes. Pide uno nuevo a tu familia.');
+      e.usos = n;
+      a.aportes[fid] = a.aportes[fid] || [];
+      a.aportes[fid].push(Object.assign({}, aporte, { id: token + '_' + n, token, creado: Date.now() }));
+      guardarAportes(a);
+    },
+    async listar(fid) {
+      return (almacenAportes().aportes[fid] || []).slice().sort((x, y) => x.creado - y.creado);
+    },
+    async leerCarga(fid, id) {
+      const x = (almacenAportes().aportes[fid] || []).find((y) => y.id === id);
+      if (!x || !x.datos) throw new Error('No se encontró el archivo del aporte.');
+      return x.datos;
+    },
+    async descartar(fid, id) {
+      const a = almacenAportes();
+      a.aportes[fid] = (a.aportes[fid] || []).filter((x) => x.id !== id);
+      guardarAportes(a);
+    },
+    async guardarAudio(fid, dataUrl, idPerfil) {
+      const a = almacenAportes();
+      const id = nuevoId();
+      a.audios[fid] = a.audios[fid] || {};
+      a.audios[fid][id] = { datos: dataUrl, perfil: idPerfil || null };
+      guardarAportes(a);
+      return 'audio:' + id;
+    },
+    async leerAudio(fid, ref) {
+      const v = (almacenAportes().audios[fid] || {})[String(ref).replace(/^audio:/, '')];
+      if (!v) throw new Error('No se encontró la grabación.');
+      return v.datos;
+    },
+    async borrarAudio(fid, ref) {
+      const a = almacenAportes();
+      if (a.audios[fid]) delete a.audios[fid][String(ref).replace(/^audio:/, '')];
+      guardarAportes(a);
+    },
+    async borrarAudiosDe(fid, idPerfil) {
+      const a = almacenAportes();
+      const m = a.audios[fid] || {};
+      Object.keys(m).forEach((k) => { if (m[k].perfil === idPerfil) delete m[k]; });
+      guardarAportes(a);
+    },
+  };
+
+  /* ── Puentes entre familias en modo local ───────────────────
+     Un puente une a una persona de la familia A con una de la B. Cada
+     lado lo acepta por separado; con los dos, queda «aceptado». El id es
+     determinista (A siempre la familia menor) para no duplicar. */
+  const CLAVE_PUENTES = 'albumFamiliar:puentes:v1';
+
+  function almacenPuentes() {
+    try {
+      const crudo = global.localStorage && localStorage.getItem(CLAVE_PUENTES);
+      const a = crudo ? JSON.parse(crudo) : null;
+      if (a && typeof a === 'object') return a;
+    } catch (e) {
+      console.warn('[AlbumDatos] No se pudieron leer los puentes locales:', e);
+    }
+    return {};
+  }
+
+  function guardarPuentes(a) {
+    try {
+      localStorage.setItem(CLAVE_PUENTES, JSON.stringify(a));
+    } catch (e) {
+      throw new Error('No cabe en el almacenamiento de este navegador (' + (e && e.name) + ').');
+    }
+  }
+
+  /** Estado que corresponde a las dos respuestas. */
+  function estadoPuente(p) {
+    if (p.aceptaA === false || p.aceptaB === false) return 'rechazado';
+    if (p.aceptaA === true && p.aceptaB === true) return 'aceptado';
+    return 'propuesto';
+  }
+
+  /** Normaliza una propuesta: A es la familia de id menor. */
+  function filaPuente(x) {
+    const invertir = String(x.fidA) > String(x.fidB);
+    const lado = (f, p, n, acepta) => ({ fid: f, pid: p, nombre: String(n || '').slice(0, 120), acepta });
+    const a = lado(x.fidA, x.pidA, x.nombreA, x.aceptaA);
+    const b = lado(x.fidB, x.pidB, x.nombreB, x.aceptaB);
+    const [p, q] = invertir ? [b, a] : [a, b];
+    const fila = {
+      fidA: p.fid, pidA: p.pid, nombreA: p.nombre, aceptaA: p.acepta === true ? true : null,
+      fidB: q.fid, pidB: q.pid, nombreB: q.nombre, aceptaB: q.acepta === true ? true : null,
+      puntaje: Math.round(Number(x.puntaje) || 0),
+      motivos: (x.motivos || []).slice(0, 8).map((m) => String(m).slice(0, 80)),
+    };
+    fila.estado = estadoPuente(fila);
+    return fila;
+  }
+
+  /* Cada parte se codifica: así "Peña" y "Pe_a" nunca dan el mismo id */
+  const idPuente = (f) => [f.fidA, f.pidA, f.fidB, f.pidB].map((x) => encodeURIComponent(String(x))).join('|');
+
+  const puentesLocales = {
+    async listar(fid) {
+      const a = almacenPuentes();
+      return Object.keys(a).map((id) => Object.assign({ id }, a[id]))
+        .filter((p) => p.fidA === fid || p.fidB === fid);
+    },
+    async proponer(id, fila) {
+      const a = almacenPuentes();
+      if (a[id]) return Object.assign({ id }, a[id]); // ya existía: no se reabre
+      a[id] = Object.assign({}, fila, { creado: Date.now() });
+      guardarPuentes(a);
+      return Object.assign({ id }, a[id]);
+    },
+    async responder(id, lado, acepta) {
+      const a = almacenPuentes();
+      if (!a[id]) throw new Error('El puente ya no existe.');
+      a[id]['acepta' + lado] = !!acepta;
+      a[id].estado = estadoPuente(a[id]);
+      guardarPuentes(a);
+    },
+    async retirar(id) {
+      const a = almacenPuentes();
+      delete a[id];
+      guardarPuentes(a);
+    },
+  };
+
   /* ── Utilidades internas ─────────────────────────────────── */
 
   function conBackend() {
     const cfg = global.ALBUM_CONFIG || {};
     return cfg.hayBackend && global.AlbumBackend ? global.AlbumBackend : null;
+  }
+
+  function implAportes() {
+    const svc = conBackend();
+    return svc && svc.aportes ? svc.aportes : aportesLocales;
+  }
+
+  function implPuentes() {
+    const svc = conBackend();
+    return svc && svc.puentes ? svc.puentes : puentesLocales;
   }
 
   function nuevoId() {
@@ -139,6 +376,37 @@
 
   const AlbumDatos = {
     TENANT_ACTIVO,
+
+    /** Aportes sin cuenta (enlaces, bandeja y notas de voz). Misma API en
+     *  local y en la nube; la valida `validarAporte` antes de enviar. */
+    aportes: {
+      crearEnlace: (fid, info) => implAportes().crearEnlace(fid, info),
+      listarEnlaces: (fid) => implAportes().listarEnlaces(fid),
+      revocarEnlace: (fid, token) => implAportes().revocarEnlace(fid, token),
+      leerEnlace: (fid, token) => implAportes().leerEnlace(fid, token),
+      async enviar(fid, token, aporte) {
+        validarAporte(aporte);
+        return implAportes().enviar(fid, token, filaAporte(aporte));
+      },
+      listar: (fid) => implAportes().listar(fid),
+      leerCarga: (fid, id) => implAportes().leerCarga(fid, id),
+      descartar: (fid, id) => implAportes().descartar(fid, id),
+      guardarAudio: (fid, dataUrl, idPerfil) => implAportes().guardarAudio(fid, dataUrl, idPerfil),
+      leerAudio: (fid, ref) => implAportes().leerAudio(fid, ref),
+      borrarAudio: (fid, ref) => implAportes().borrarAudio(fid, ref),
+    },
+
+    /** Puentes con otras familias (ver puentes.js). */
+    puentes: {
+      listar: (fid) => implPuentes().listar(fid),
+      proponer(propuesta) {
+        const fila = filaPuente(propuesta);
+        return implPuentes().proponer(idPuente(fila), fila);
+      },
+      responder: (id, lado, acepta) => implPuentes().responder(id, lado, acepta),
+      retirar: (id) => implPuentes().retirar(id),
+      id: (propuesta) => idPuente(filaPuente(propuesta)),
+    },
 
     /** Origen único de perfiles. Backend si está configurado; si falla o no
      *  lo está, cae a la copia local para no dejar el lienzo vacío. */
@@ -177,10 +445,46 @@
       guardarLocal();
     },
 
+    /** Añade un elemento a una lista del perfil (voces, recuerdos) sin
+     *  reescribir la lista entera: dos personas aprobando a la vez no se
+     *  pisan. En la nube es un arrayUnion. */
+    async agregarALista(idFamilia, id, campo, item) {
+      const svc = conBackend();
+      if (svc) return await svc.agregarALista(idFamilia, id, campo, item);
+      const p = datosLocales.find((x) => x.id === id && x.id_familia === idFamilia);
+      if (!p) throw new Error('Esa persona ya no está en el árbol.');
+      p[campo] = (Array.isArray(p[campo]) ? p[campo] : []).concat([item]);
+      guardarLocal();
+    },
+
+    /** Quita ese elemento exacto (no "el de tal posición"). */
+    async quitarDeLista(idFamilia, id, campo, item) {
+      const svc = conBackend();
+      if (svc) return await svc.quitarDeLista(idFamilia, id, campo, item);
+      const p = datosLocales.find((x) => x.id === id && x.id_familia === idFamilia);
+      if (!p) return;
+      const clave = JSON.stringify(item);
+      p[campo] = (Array.isArray(p[campo]) ? p[campo] : []).filter((x) => JSON.stringify(x) !== clave);
+      guardarLocal();
+    },
+
     /** Elimina un perfil y limpia las referencias que otros le hacían. */
     async eliminar(idFamilia, id) {
+      /* Sus puentes con otras familias dejan de tener sentido */
+      try {
+        const propios = (await implPuentes().listar(idFamilia))
+          .filter((p) => (p.fidA === idFamilia && p.pidA === id) || (p.fidB === idFamilia && p.pidB === id));
+        for (const p of propios) await implPuentes().retirar(p.id);
+      } catch (e) {
+        console.warn('[AlbumDatos] No se pudieron retirar sus puentes:', e);
+      }
       const svc = conBackend();
       if (svc) return await svc.eliminar(idFamilia, id);
+      try {
+        await aportesLocales.borrarAudiosDe(idFamilia, id);
+      } catch (e) {
+        console.warn('[AlbumDatos] No se pudieron borrar sus grabaciones locales:', e);
+      }
       datosLocales = datosLocales.filter((x) => !(x.id === id && x.id_familia === idFamilia));
       for (const p of datosLocales) {
         if (p.id_padre === id) p.id_padre = null;
@@ -239,6 +543,27 @@
       const set = new Set(datosLocales.map((p) => p.id_familia));
       set.add(TENANT_ACTIVO); // el tenant por defecto siempre aparece
       return [...set].sort();
+    },
+
+    /** Familias con su resumen (apellidos, lugares, cuántos son), para
+     *  buscarlas sin leer a sus personas: [{ id, resumen }].
+     *  Local: se calcula al vuelo. Nube: lo guardado en cada familia. */
+    async listarResumenes() {
+      const svc = conBackend();
+      if (svc && svc.listarResumenes) return await svc.listarResumenes();
+      const ids = [...new Set(datosLocales.map((p) => p.id_familia))].sort();
+      return ids.map((id) => ({
+        id,
+        resumen: global.AlbumLugares
+          ? AlbumLugares.resumirFamilia(datosLocales.filter((p) => p.id_familia === id))
+          : null,
+      }));
+    },
+
+    /** Guarda el resumen de una familia (solo con sesión, en la nube). */
+    async guardarResumen(idFamilia, resumen) {
+      const svc = conBackend();
+      if (svc && svc.guardarResumen) await svc.guardarResumen(idFamilia, resumen);
     },
 
     /** ¿Se puede persistir en este entorno? En backend, siempre. En local,

@@ -464,6 +464,23 @@
     }
   };
 
+  /** Sello dorado en las tarjetas de quien tiene un puente aceptado con
+   *  otra familia. `porPersona`: Map(id → [{fid, nombre}]). Se aplica sobre
+   *  los nodos ya dibujados, sin volver a calcular nada. */
+  Lienzo.prototype.marcarPuentes = function (porPersona, etiqueta) {
+    this.elementosNodo.forEach((nodo, id) => {
+      const viejo = nodo.querySelector('.nodo__puente');
+      if (viejo) viejo.remove();
+      const lista = porPersona.get(id);
+      nodo.classList.toggle('nodo--puente', !!lista);
+      if (!lista) return;
+      const sello = document.createElement('span');
+      sello.className = 'nodo__puente';
+      sello.textContent = '↔ ' + lista.map((x) => etiqueta(x.fid)).join(', ');
+      nodo.querySelector('.nodo__marco').appendChild(sello);
+    });
+  };
+
   /** Centra suavemente la vista sobre una persona (sin cambiar el zoom).
    *  Se usa al abrir su ficha: la foto queda de fondo, protagonista. */
   Lienzo.prototype.centrarEn = function (id) {

@@ -47,6 +47,7 @@
       fechas: $('modalFechas'),
       obra: $('modalObra'),
       bio: $('modalBio'),
+      lugares: $('modalLugares'),
       foto: $('carruselFoto'),
       marco: $('carruselMarco'),
       vacio: $('carruselVacio'),
@@ -144,8 +145,9 @@
           completos, familiaActual, etiquetaTenant(familiaActual), toast
         );
         toast(
-          'Copia lista: ' + r.perfiles + ' perfiles y ' + r.fotos + ' fotos' +
-          (r.fallidas ? ' (' + r.fallidas + ' fotos no se pudieron descargar)' : '')
+          'Copia lista: ' + r.perfiles + ' perfiles, ' + r.fotos + ' fotos' +
+          (r.voces ? ' y ' + r.voces + ' voces' : '') +
+          (r.fallidas ? ' (' + r.fallidas + ' archivos no se pudieron descargar)' : '')
         );
       } catch (err) {
         console.error('[Respaldo]', err);
@@ -184,7 +186,7 @@
         }
         toast(
           'Restaurados ' + r.perfiles + ' perfiles y ' + r.fotos + ' fotos' +
-          (r.sinSubir ? ' (' + r.sinSubir + ' fotos necesitan la nube)' : '')
+          (r.sinSubir ? ' (' + r.sinSubir + ' fotos o voces no se pudieron restaurar)' : '')
         );
       } catch (err) {
         console.error('[Restaurar]', err);
@@ -242,6 +244,7 @@
       $('lienzoVacioTitulo').textContent = 'Esta familia aún no tiene perfiles';
       ultimosPerfiles = todos;
       pintar(opciones);
+      sincronizarResumen();
       return todos;
     };
 
@@ -261,6 +264,7 @@
       perfilesDibujados = lista;
       lienzo.dibujar(lista, opciones);
       $('lienzoVacio').hidden = lista.length !== 0;
+      marcarPuentes();
     }
 
     const mantenimiento = new Mantenimiento({
@@ -270,6 +274,127 @@
       /* Lista actual de la familia: alimenta los selectores de relaciones */
       perfiles: () => ultimosPerfiles,
     });
+
+    /* ── Abrir a una persona desde fuera del lienzo ──────────────
+       (buscador, atlas, puentes). Si hay una rama activa que no la
+       incluye, se vuelve al árbol completo para que su tarjeta exista. */
+    function abrirPersona(p) {
+      if (ramaDe && !perfilesDibujados.some((x) => x.id === p.id)) {
+        ramaDe = null;
+        $('chipRama').hidden = true;
+        pintar({ recentrar: false });
+      }
+      const fresco = ultimosPerfiles.find((x) => x.id === p.id) || p;
+      lienzo.centrarEn(fresco.id);
+      perfil.abrir(fresco);
+      resolverFicha(fresco);
+    }
+
+    /* ── Paneles: buscador, aportes y puentes ─────────────────── */
+    const paneles = ['panelBuscar', 'panelAportes', 'panelPuentes'].map($);
+    const cerrarPaneles = () => paneles.forEach((p) => { p.hidden = true; });
+    paneles.forEach((p) => p.querySelectorAll('[data-cerrar-panel]').forEach((el) => el.addEventListener('click', () => { p.hidden = true; })));
+
+    const buscador = new Buscador({
+      perfiles: () => ultimosPerfiles,
+      familiaActual: () => familiaActual,
+      etiqueta: etiquetaTenant,
+      resumenes: () => AlbumDatos.listarResumenes(),
+      alElegirPersona: abrirPersona,
+      alElegirFamilia: (id) => cambiarFamilia(id),
+    });
+
+    const atlas = new Atlas({
+      perfiles: () => ultimosPerfiles,
+      alElegirPersona: abrirPersona,
+    });
+
+    const aportes = new Aportes({
+      perfil,
+      familiaActual: () => familiaActual,
+      etiqueta: etiquetaTenant,
+      perfiles: () => ultimosPerfiles,
+      recargar,
+      toast,
+    });
+
+    const puentes = new Puentes({
+      familiaActual: () => familiaActual,
+      etiqueta: etiquetaTenant,
+      perfiles: () => ultimosPerfiles,
+      toast,
+      alCambiar: () => marcarPuentes(),
+      /* "Ver allí": cambia de familia y abre a esa persona */
+      alAbrirEn: async (fid, pid) => {
+        if (perfil.abierto) perfil.cerrar();
+        await cambiarFamilia(fid);
+        const p = ultimosPerfiles.find((x) => x.id === pid);
+        if (p) setTimeout(() => abrirPersona(p), 350);
+        else toast('Esa persona ya no está en el otro árbol');
+      },
+    });
+
+    function marcarPuentes() {
+      lienzo.marcarPuentes(puentes.aceptadosPorPersona(), etiquetaTenant);
+    }
+
+    /* Voces, recuerdos y puentes en la ficha */
+    perfil.alPintarLectura = (p) => {
+      aportes.pintarFicha(p);
+      puentes.pintarFicha(p);
+    };
+
+    $('btnBuscar').addEventListener('click', () => { cerrarPaneles(); buscador.abrir(); });
+    $('btnAtlas').addEventListener('click', () => { cerrarPaneles(); atlas.abrir(); });
+    $('btnAportes').addEventListener('click', () => { cerrarPaneles(); aportes.abrir(); });
+    $('btnPuentes').addEventListener('click', () => { cerrarPaneles(); puentes.abrir(); });
+
+    window.addEventListener('keydown', (e) => {
+      const abierto = paneles.find((p) => !p.hidden);
+      if (e.key === 'Escape') {
+        if (abierto) { abierto.hidden = true; e.stopImmediatePropagation(); return; }
+        if (atlas.abierto()) { atlas.cerrar(); e.stopImmediatePropagation(); }
+        return;
+      }
+      /* "/" abre el buscador, salvo que se esté escribiendo en un campo */
+      const escribiendo = /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
+      if (e.key === '/' && !escribiendo && !abierto && !atlas.abierto() && !perfil.abierto) {
+        e.preventDefault();
+        buscador.abrir();
+      }
+    }, true);
+
+    /* ── Resumen de la familia (para buscarla y para los Puentes) ──
+       Se guarda en el documento de la familia solo si cambió y solo
+       con sesión: una escritura de vez en cuando, nunca al leer. */
+    let resumenesConocidos = null; // Map(fid → resumen), se lee una vez
+    async function sincronizarResumen() {
+      if (!cfg.hayBackend || !document.body.classList.contains('modo-edicion') || !ultimosPerfiles.length) return;
+      const fidInicial = familiaActual;
+      if (!resumenesConocidos) {
+        try {
+          resumenesConocidos = new Map((await AlbumDatos.listarResumenes()).map((f) => [f.id, f.resumen]));
+        } catch (e) {
+          console.warn('[Resumen] No se pudieron leer', e);
+          return;
+        }
+        if (familiaActual !== fidInicial) return; // se cambió de familia mientras tanto
+      }
+      /* Familia y personas se fijan ANTES de cualquier espera: si en medio
+         se cambia de familia, el resumen no puede caer en la otra. */
+      const fid = familiaActual;
+      const perfiles = ultimosPerfiles;
+      const nuevo = AlbumLugares.resumirFamilia(perfiles);
+      const viejo = resumenesConocidos.get(fid);
+      const comparable = (r) => r && JSON.stringify({ a: r.apellidos, l: r.lugares, n: r.nombresLugar, p: r.personas });
+      if (comparable(viejo) === comparable(nuevo)) return;
+      try {
+        await AlbumDatos.guardarResumen(fid, nuevo);
+        resumenesConocidos.set(fid, nuevo);
+      } catch (e) {
+        console.warn('[Resumen] No se pudo guardar', e);
+      }
+    }
 
     /* ── Selector de familia (autocompletado) ─────────────────── */
     async function rellenarFamilias() {
@@ -295,6 +420,9 @@
       } catch (e) {
         toast(e.message);
       }
+      await puentes.cargar();
+      marcarPuentes();
+      if (document.body.classList.contains('modo-edicion')) aportes.contarPendientes();
     }
 
     $('buscarFamilia').addEventListener('change', (e) => {
@@ -355,6 +483,13 @@
        El candado es opcional y se abre desde el botón del encabezado. */
     const aplicarModo = (hayS) => {
       document.body.classList.toggle('modo-edicion', !!hayS);
+      /* Con sesión se ven las propuestas de puente pendientes y la
+         bandeja de aportes; sin ella, solo los puentes aceptados. */
+      puentes.cargar().then(marcarPuentes);
+      if (hayS) {
+        aportes.contarPendientes();
+        sincronizarResumen();
+      }
       const btn = $('btnSesion');
       btn.textContent = hayS ? 'Salir' : 'Iniciar';
       btn.title = hayS
@@ -433,6 +568,8 @@
     } else {
       /* Sin backend (modo maqueta local): todo editable, sin candado. */
       document.body.classList.add('modo-edicion');
+      puentes.cargar().then(marcarPuentes);
+      aportes.contarPendientes();
     }
 
     await carga;

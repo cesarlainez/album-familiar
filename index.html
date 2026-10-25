@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Montserrat:wght@200;300;400;600&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="css/galeria.css?v=24" />
+  <link rel="stylesheet" href="css/galeria.css?v=25" />
 </head>
 <body>
 
@@ -69,6 +69,10 @@
           <input id="archivoRespaldo" type="file" accept=".zip,.json" hidden />
         </div>
       </div>
+      <button class="btn-fantasma" id="btnBuscar" title="Buscar personas, lugares, años o familias (tecla /)">Buscar</button>
+      <button class="btn-fantasma" id="btnAtlas" title="Atlas de raíces: el mapa y la línea de tiempo de la familia">Atlas</button>
+      <button class="btn-fantasma solo-edicion" id="btnAportes" title="Aportes de familiares sin cuenta: enlaces y bandeja de revisión">Aportes<span class="insignia" id="insigniaAportes" hidden></span></button>
+      <button class="btn-fantasma solo-edicion" id="btnPuentes" title="Puentes con otras familias">Puentes<span class="insignia" id="insigniaPuentes" hidden></span></button>
       <button class="btn-fantasma" id="btnCentrar" title="Centrar la constelación (tecla C)">Centrar</button>
       <button class="btn-fantasma" id="btnSesion" title="Ingresar la clave para editar" hidden>Iniciar</button>
     </nav>
@@ -196,6 +200,26 @@
                 <p class="ficha-datos__texto" id="modalBio"></p>
               </div>
 
+              <div class="ficha-datos__bloque" hidden>
+                <h3 class="ficha-datos__etiqueta">Lugares</h3>
+                <ul class="ficha-lugares" id="modalLugares"></ul>
+              </div>
+
+              <div class="ficha-datos__bloque" hidden>
+                <h3 class="ficha-datos__etiqueta">Su voz</h3>
+                <div class="ficha-voces" id="modalVoces"></div>
+              </div>
+
+              <div class="ficha-datos__bloque" hidden>
+                <h3 class="ficha-datos__etiqueta">Recuerdos</h3>
+                <div class="ficha-recuerdos" id="modalRecuerdos"></div>
+              </div>
+
+              <div class="ficha-datos__bloque" hidden>
+                <h3 class="ficha-datos__etiqueta">Puentes con otras familias</h3>
+                <div class="ficha-puentes" id="modalPuentes"></div>
+              </div>
+
               <!-- Filtro de rama: visible también en modo lectura -->
               <div class="ficha-rama">
                 <button class="btn-crud" id="btnVerRama" type="button">Ver solo su rama</button>
@@ -263,6 +287,25 @@
                 <select class="campo__input campo__multiple" id="editParejas" multiple size="4"></select>
               </label>
 
+              <fieldset class="campo campo--lugares">
+                <span class="campo__etiqueta">Lugares (para el Atlas y el buscador)</span>
+                <div class="lugar-fila">
+                  <span class="lugar-fila__tipo">Nacimiento</span>
+                  <select class="campo__input" id="editLugarNacimiento" aria-label="Lugar de nacimiento"></select>
+                  <input class="campo__input" id="editLugarNacimientoDetalle" type="text" autocomplete="off" maxlength="120" placeholder="Distrito, cantón o ciudad" aria-label="Detalle del lugar de nacimiento" />
+                </div>
+                <div class="lugar-fila">
+                  <span class="lugar-fila__tipo">Residencia</span>
+                  <select class="campo__input" id="editLugarResidencia" aria-label="Lugar de residencia"></select>
+                  <input class="campo__input" id="editLugarResidenciaDetalle" type="text" autocomplete="off" maxlength="120" placeholder="Distrito, cantón o ciudad" aria-label="Detalle del lugar de residencia" />
+                </div>
+                <div class="lugar-fila">
+                  <span class="lugar-fila__tipo">Fallecimiento</span>
+                  <select class="campo__input" id="editLugarFallecimiento" aria-label="Lugar de fallecimiento"></select>
+                  <input class="campo__input" id="editLugarFallecimientoDetalle" type="text" autocomplete="off" maxlength="120" placeholder="Distrito, cantón o ciudad" aria-label="Detalle del lugar de fallecimiento" />
+                </div>
+              </fieldset>
+
               <fieldset class="campo campo--fotos">
                 <span class="campo__etiqueta">Fotografías (hasta 4)</span>
                 <div class="foto-fila">
@@ -298,6 +341,76 @@
     </div>
   </div>
 
+  <!-- ═══ Buscador: personas, lugares, años y familias ═══ -->
+  <div class="panel" id="panelBuscar" hidden>
+    <div class="panel__velo" data-cerrar-panel></div>
+    <div class="panel__caja" role="dialog" aria-modal="true" aria-labelledby="buscarTitulo">
+      <button class="panel__cerrar" data-cerrar-panel aria-label="Cerrar">&times;</button>
+      <p class="panel__titulo" id="buscarTitulo">Buscar</p>
+      <input class="campo__input panel__buscar" id="buscarTexto" type="search" autocomplete="off"
+             placeholder="Nombre, apellido, lugar o año — p. ej. Laínez Chalatenango 1930s"
+             aria-label="Buscar personas, lugares, años o familias" />
+      <p class="panel__nota" id="buscarNota">Suena igual, encuentra igual: «Lainez», «Laínez» y «Lainés» dan lo mismo. Un año como «1930s» busca la década.</p>
+      <h3 class="panel__seccion">En esta familia</h3>
+      <ul class="resultados" id="buscarPersonas"></ul>
+      <h3 class="panel__seccion">Otras familias</h3>
+      <ul class="resultados" id="buscarFamilias"></ul>
+    </div>
+  </div>
+
+  <!-- ═══ Aportes sin cuenta: enlaces y bandeja de revisión ═══ -->
+  <div class="panel" id="panelAportes" hidden>
+    <div class="panel__velo" data-cerrar-panel></div>
+    <div class="panel__caja" role="dialog" aria-modal="true" aria-labelledby="aportesTitulo">
+      <button class="panel__cerrar" data-cerrar-panel aria-label="Cerrar">&times;</button>
+      <p class="panel__titulo" id="aportesTitulo">Aportes de la familia</p>
+      <p class="panel__nota">Comparte un enlace por WhatsApp: quien lo abra puede grabar una nota de voz, subir una foto o escribir un recuerdo, sin crear cuenta. Nada se publica hasta que lo apruebes aquí.</p>
+      <div class="panel__acciones">
+        <button class="btn-crud btn-crud--primario" id="aporteNuevoEnlace" type="button">Crear enlace de aportes</button>
+      </div>
+      <ul class="enlaces" id="aporteEnlaces"></ul>
+      <h3 class="panel__seccion">Por revisar</h3>
+      <ul class="bandeja" id="aporteBandeja"></ul>
+    </div>
+  </div>
+
+  <!-- ═══ Puentes con otras familias ═══ -->
+  <div class="panel" id="panelPuentes" hidden>
+    <div class="panel__velo" data-cerrar-panel></div>
+    <div class="panel__caja" role="dialog" aria-modal="true" aria-labelledby="puentesTitulo">
+      <button class="panel__cerrar" data-cerrar-panel aria-label="Cerrar">&times;</button>
+      <p class="panel__titulo" id="puentesTitulo">Puentes con otras familias</p>
+      <p class="panel__nota">Busca personas de este árbol que también están en el de otra familia registrada. Solo se propone un puente si coinciden el nombre y un apellido, la época (si las dos fichas la tienen) <em>y además</em> un padre, una madre o un cónyuge en el mismo papel. Cada familia acepta por su lado; no se copian datos.</p>
+      <div class="panel__acciones">
+        <button class="btn-crud btn-crud--primario" id="puenteBuscar" type="button">Buscar coincidencias</button>
+      </div>
+      <p class="panel__nota" id="puenteEstado"></p>
+      <ul class="puentes" id="puenteLista"></ul>
+    </div>
+  </div>
+
+  <!-- ═══ Atlas de raíces: mapa y línea de tiempo ═══ -->
+  <div class="atlas" id="atlas" hidden role="dialog" aria-modal="true" aria-labelledby="atlasTitulo">
+    <div class="atlas__barra">
+      <p class="atlas__titulo" id="atlasTitulo">Atlas de raíces</p>
+      <div class="atlas__vistas" role="tablist" aria-label="Vista del mapa">
+        <button class="btn-crud activo" type="button" role="tab" aria-selected="true" data-vista="sv">El Salvador</button>
+        <button class="btn-crud" type="button" role="tab" aria-selected="false" data-vista="mundo">Mundo</button>
+      </div>
+      <button class="atlas__cerrar" id="atlasCerrar" type="button" aria-label="Cerrar el atlas">&times;</button>
+    </div>
+    <div class="atlas__cuerpo">
+      <svg class="atlas__mapa" id="atlasMapa" role="img" aria-labelledby="atlasTitulo"></svg>
+      <aside class="atlas__lista" id="atlasLista" aria-live="polite"></aside>
+      <p class="atlas__vacio" id="atlasVacio" hidden>Aún nadie tiene lugares. Abre una ficha, pulsa <strong>Editar</strong> y elige dónde nació: la familia aparecerá aquí.</p>
+    </div>
+    <div class="atlas__tiempo">
+      <button class="btn-crud atlas__play" id="atlasPlay" type="button" aria-label="Reproducir la línea de tiempo">▶</button>
+      <input class="atlas__rango" id="atlasDecada" type="range" min="1900" max="2030" step="10" value="2030" aria-label="Década" />
+      <span class="atlas__decada" id="atlasDecadaTexto"></span>
+    </div>
+  </div>
+
   <!-- ═══ Visor a pantalla completa ═══ -->
   <div class="visor" id="visor" hidden>
     <button class="visor__cerrar" id="visorCerrar" aria-label="Salir de pantalla completa">&times;</button>
@@ -310,14 +423,19 @@
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore-compat.js"></script>
 
-  <script src="js/config.js?v=24"></script>
-  <script src="js/servicios/firebase.js?v=24"></script>
-  <script src="js/datos.js?v=24"></script>
-  <script src="js/lienzo.js?v=24"></script>
-  <script src="js/perfil.js?v=24"></script>
-  <script src="js/mantenimiento.js?v=24"></script>
-  <script src="js/exportar.js?v=24"></script>
-  <script src="js/respaldo.js?v=24"></script>
-  <script src="js/app.js?v=24"></script>
+  <script src="js/config.js?v=25"></script>
+  <script src="js/servicios/firebase.js?v=25"></script>
+  <script src="js/lugares.js?v=25"></script>
+  <script src="js/datos.js?v=25"></script>
+  <script src="js/lienzo.js?v=25"></script>
+  <script src="js/perfil.js?v=25"></script>
+  <script src="js/mantenimiento.js?v=25"></script>
+  <script src="js/exportar.js?v=25"></script>
+  <script src="js/respaldo.js?v=25"></script>
+  <script src="js/aportes.js?v=25"></script>
+  <script src="js/puentes.js?v=25"></script>
+  <script src="js/buscador.js?v=25"></script>
+  <script src="js/atlas.js?v=25"></script>
+  <script src="js/app.js?v=25"></script>
 </body>
 </html>

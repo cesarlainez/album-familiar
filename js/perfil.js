@@ -23,6 +23,7 @@
     this.perfilActual = null;
     this.alAbrir = null; // hook opcional (lo usa mantenimiento.js)
     this.alCambiarEstado = null; // (abierta: bool) — el lienzo pausa sus chispas
+    this.alPintarLectura = null; // (perfil) — voces, recuerdos y puentes (app.js)
     this._cerrarTimer = null;
 
     this._conectarEventos();
@@ -136,12 +137,36 @@
     pintar(r.fechas, AlbumDatos.formatearFechas(perfil));
     pintar(r.obra, perfil.obra_maestra);
     pintar(r.bio, perfil.biografia);
+    this._pintarLugares(perfil);
+
+    /* Voces, recuerdos y puentes los pinta quien los conoce (app.js). */
+    if (typeof this.alPintarLectura === 'function') this.alPintarLectura(perfil);
 
     this.galeria = (perfil.galeria || [])
       .filter((g) => g && g.indexOf('foto:') !== 0)
       .slice(0, MAX_FOTOS);
     this.indice = 0;
     this._cargarGaleria(perfil);
+  };
+
+  /** "Nació en…", "Vive o vivió en…", "Falleció en…" — solo los que hay. */
+  Perfil.prototype._pintarLugares = function (perfil) {
+    const r = this.refs;
+    if (!r.lugares || !global.AlbumLugares) return;
+    const ls = AlbumLugares.lugaresDe(perfil);
+    r.lugares.textContent = '';
+    AlbumLugares.TIPOS.forEach(([tipo, rotulo]) => {
+      const texto = AlbumLugares.describir(ls[tipo]);
+      if (!texto) return;
+      const li = document.createElement('li');
+      const etiqueta = document.createElement('span');
+      etiqueta.className = 'ficha-lugares__tipo';
+      etiqueta.textContent = rotulo;
+      li.appendChild(etiqueta);
+      li.appendChild(document.createTextNode(' ' + texto));
+      r.lugares.appendChild(li);
+    });
+    r.lugares.closest('.ficha-datos__bloque').hidden = !r.lugares.children.length;
   };
 
   /* ── Mini carrusel ───────────────────────────────────────── */
