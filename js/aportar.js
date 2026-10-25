@@ -23,7 +23,7 @@
   const fid = parametros.get('f') || '';
   const token = parametros.get('t') || '';
 
-  let tipo = 'voz';
+  let tipo = 'rama';
   let grabacion = null; // { datos, duracion }
   let foto = null; // data URL
 
@@ -153,6 +153,9 @@
       b.setAttribute('aria-selected', String(activo));
     });
     document.querySelectorAll('[data-seccion]').forEach((s) => { s.hidden = s.dataset.seccion !== nuevo; });
+    /* «Mi familia» tiene su propio formulario; los demás comparten pie */
+    $('aportarDeQuien').hidden = nuevo === 'rama';
+    $('aportarPie').hidden = nuevo === 'rama';
     $('aportarTextoEtiqueta').textContent = nuevo === 'recuerdo'
       ? 'Tu recuerdo'
       : '¿Quieres contar algo más? (opcional)';
@@ -208,9 +211,37 @@
       }
     });
 
+    /* Mensaje breve tras cada envío de «Mi familia» */
+    const aviso = document.createElement('p');
+    aviso.className = 'aportar__aviso';
+    aviso.setAttribute('role', 'status');
+    aviso.hidden = true;
+    $('ramaLista').insertAdjacentElement('beforebegin', aviso);
+    let avisoTimer = null;
+    const rama = new AportarRama({
+      fid,
+      token,
+      enlace,
+      firma: () => {
+        const autor = $('aportarAutor').value.trim();
+        try { if (autor) localStorage.setItem(CLAVE_AUTOR, autor); } catch (err) { /* opcional */ }
+        return { autor, relacion: $('aportarRelacion').value };
+      },
+      reducirFoto,
+      aviso: (texto) => {
+        aviso.textContent = texto;
+        aviso.hidden = false;
+        clearTimeout(avisoTimer);
+        avisoTimer = setTimeout(() => { aviso.hidden = true; }, 6000);
+      },
+    });
+    rama.iniciar();
+    elegirTipo('rama');
+
     $('aportarForm').hidden = false;
     $('aportarForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (tipo === 'rama') return; // Enter en un campo de «Mi familia»
       error('');
       const persona = sel.value;
       const aporte = {

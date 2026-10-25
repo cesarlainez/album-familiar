@@ -57,20 +57,20 @@ service cloud.firestore {
       /* Enlaces de aportes. El id ES el token: quien lo conoce puede
          leer ESE enlace (get), pero nadie sin clave puede listarlos.
          `usos` cuenta los aportes recibidos: sin clave solo se puede
-         subir de 1 en 1, hasta 40, y solo junto con el aporte que le
+         subir de 1 en 1, hasta 80, y solo junto con el aporte que le
          corresponde. Un enlace filtrado no puede llenar la base. */
       match /enlaces/{token} {
         allow get: if true;
         allow list: if request.auth != null;
         allow create: if request.auth != null
-                      && request.resource.data.keys().hasOnly(['etiqueta', 'personas', 'creado', 'vence', 'usos'])
+                      && request.resource.data.keys().hasOnly(['etiqueta', 'personas', 'rama', 'creado', 'vence', 'usos'])
                       && token.size() >= 32
                       && request.resource.data.usos == 0
                       && request.resource.data.vence is timestamp
                       && request.resource.data.vence <= request.time + duration.value(31, 'd');
         allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usos'])
                       && request.resource.data.usos == resource.data.usos + 1
-                      && request.resource.data.usos <= 40
+                      && request.resource.data.usos <= 80
                       && resource.data.vence > request.time
                       && existsAfter(/databases/$(database)/documents/familias/$(idFamilia)/aportes/$(token + '_' + string(request.resource.data.usos)));
         allow delete: if request.auth != null;
@@ -100,7 +100,7 @@ service cloud.firestore {
     function cargaValida(tipo, c) {
       return c.keys().hasOnly(['datos']) && c.datos is string && c.datos.size() < 900000
           && ((tipo == 'voz' && c.datos.matches('^data:audio/.*'))
-              || (tipo == 'foto' && c.datos.matches('^data:image/.*')));
+              || (tipo in ['foto', 'persona', 'datos'] && c.datos.matches('^data:image/.*')));
     }
 
     function aporteValido(idFamilia, idAporte) {
@@ -108,7 +108,7 @@ service cloud.firestore {
       let enlace = /databases/$(database)/documents/familias/$(idFamilia)/enlaces/$(d.token);
       let carga = /databases/$(database)/documents/familias/$(idFamilia)/aportes/$(idAporte)/carga/datos;
       return d.keys().hasOnly(['token', 'tipo', 'autor', 'relacion', 'persona_id', 'persona_nombre',
-                               'texto', 'duracion', 'creado'])
+                               'texto', 'duracion', 'creado', 'propuesta', 'vinculo', 'adjunto'])
           && d.keys().hasAll(['token', 'tipo', 'autor', 'creado'])
           && d.token is string && d.token.size() >= 32 && d.token.size() <= 64
           && exists(enlace) && get(enlace).data.vence > request.time
@@ -116,15 +116,38 @@ service cloud.firestore {
           && getAfter(enlace).data.usos == get(enlace).data.usos + 1
           && idAporte == d.token + '_' + string(getAfter(enlace).data.usos)
           && d.creado == request.time
-          && d.tipo in ['voz', 'foto', 'recuerdo']
+          && d.tipo in ['voz', 'foto', 'recuerdo', 'persona', 'datos']
           && d.autor is string && d.autor.size() > 0 && d.autor.size() <= 60
           && (!('relacion' in d) || (d.relacion is string && d.relacion.size() <= 40))
-          && (!('persona_id' in d) || (d.persona_id is string && d.persona_id.size() <= 100))
+          && (!('persona_id' in d) || (d.persona_id is string && d.persona_id.size() <= 140))
           && (!('persona_nombre' in d) || (d.persona_nombre is string && d.persona_nombre.size() <= 120))
           && (!('texto' in d) || (d.texto is string && d.texto.size() <= 4000))
           && (!('duracion' in d) || (d.duracion is number && d.duracion >= 0 && d.duracion <= 400))
+          && (!('adjunto' in d) || d.adjunto is bool)
           && ((d.tipo == 'recuerdo' && d.texto is string && d.texto.size() > 0)
-              || (d.tipo != 'recuerdo' && existsAfter(carga)));
+              || (d.tipo in ['voz', 'foto'] && existsAfter(carga))
+              || (d.tipo in ['persona', 'datos'] && propuestaValida(d)));
+    }
+
+    /* Una persona nueva o una corrección: campos cortos y conocidos.
+       La foto, si la hay, va en carga/datos como en los demás aportes. */
+    function propuestaValida(d) {
+      let p = d.propuesta;
+      return p is map
+          && p.keys().hasOnly(['nombre', 'nacimiento', 'fallecimiento', 'lugar_nacimiento', 'lugar_nacimiento_detalle',
+                               'lugar_residencia', 'lugar_residencia_detalle', 'ocupacion'])
+          && textoCorto(p, 'nombre') && textoCorto(p, 'nacimiento') && textoCorto(p, 'fallecimiento')
+          && textoCorto(p, 'lugar_nacimiento') && textoCorto(p, 'lugar_nacimiento_detalle')
+          && textoCorto(p, 'lugar_residencia') && textoCorto(p, 'lugar_residencia_detalle')
+          && textoCorto(p, 'ocupacion')
+          && d.persona_id is string && d.persona_id.size() > 0
+          && ((d.tipo == 'persona' && d.vinculo in ['hijo', 'pareja', 'padre', 'madre']
+               && 'nombre' in p && p.nombre.size() > 0)
+              || (d.tipo == 'datos' && (!('vinculo' in d) || d.vinculo == '')));
+    }
+
+    function textoCorto(p, k) {
+      return !(k in p) || (p[k] is string && p[k].size() <= 120);
     }
 
     /* Puentes entre familias. Sin clave solo se ven los ACEPTADOS (la

@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Montserrat:wght@200;300;400;600&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="css/galeria.css?v=25" />
+  <link rel="stylesheet" href="css/galeria.css?v=26" />
 </head>
 <body>
 
@@ -364,12 +364,19 @@
     <div class="panel__caja" role="dialog" aria-modal="true" aria-labelledby="aportesTitulo">
       <button class="panel__cerrar" data-cerrar-panel aria-label="Cerrar">&times;</button>
       <p class="panel__titulo" id="aportesTitulo">Aportes de la familia</p>
-      <p class="panel__nota">Comparte un enlace por WhatsApp: quien lo abra puede grabar una nota de voz, subir una foto o escribir un recuerdo, sin crear cuenta. Nada se publica hasta que lo apruebes aquí.</p>
-      <div class="panel__acciones">
-        <button class="btn-crud btn-crud--primario" id="aporteNuevoEnlace" type="button">Crear enlace de aportes</button>
+      <p class="panel__nota">Manda un enlace a cada primo o a cada familia por WhatsApp. Sin crear cuenta, verán a su familia cercana y podrán <em>completar fechas, lugares y fotos</em>, <em>agregar a hijos, nietos, parejas y padres</em>, o dejar una nota de voz o un recuerdo. Nada se publica hasta que lo apruebes aquí.</p>
+      <div class="panel__acciones panel__acciones--enlace">
+        <label class="campo">
+          <span class="campo__etiqueta">Enlace para la rama de (opcional)</span>
+          <select class="campo__input" id="aporteRama"></select>
+        </label>
+        <button class="btn-crud btn-crud--primario" id="aporteNuevoEnlace" type="button">Crear enlace</button>
       </div>
       <ul class="enlaces" id="aporteEnlaces"></ul>
-      <h3 class="panel__seccion">Por revisar</h3>
+      <div class="panel__fila">
+        <h3 class="panel__seccion">Por revisar</h3>
+        <button class="btn-crud btn-crud--mini" id="aporteAprobarTodo" type="button" hidden>Aprobar todo</button>
+      </div>
       <ul class="bandeja" id="aporteBandeja"></ul>
     </div>
   </div>
@@ -423,19 +430,19 @@
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore-compat.js"></script>
 
-  <script src="js/config.js?v=25"></script>
-  <script src="js/servicios/firebase.js?v=25"></script>
-  <script src="js/lugares.js?v=25"></script>
-  <script src="js/datos.js?v=25"></script>
-  <script src="js/lienzo.js?v=25"></script>
-  <script src="js/perfil.js?v=25"></script>
-  <script src="js/mantenimiento.js?v=25"></script>
-  <script src="js/exportar.js?v=25"></script>
-  <script src="js/respaldo.js?v=25"></script>
-  <script src="js/aportes.js?v=25"></script>
-  <script src="js/puentes.js?v=25"></script>
-  <script src="js/buscador.js?v=25"></script>
-  <script src="js/atlas.js?v=25"></script>
-  <script src="js/app.js?v=25"></script>
+  <script src="js/config.js?v=26"></script>
+  <script src="js/servicios/firebase.js?v=26"></script>
+  <script src="js/lugares.js?v=26"></script>
+  <script src="js/datos.js?v=26"></script>
+  <script src="js/lienzo.js?v=26"></script>
+  <script src="js/perfil.js?v=26"></script>
+  <script src="js/mantenimiento.js?v=26"></script>
+  <script src="js/exportar.js?v=26"></script>
+  <script src="js/respaldo.js?v=26"></script>
+  <script src="js/aportes.js?v=26"></script>
+  <script src="js/puentes.js?v=26"></script>
+  <script src="js/buscador.js?v=26"></script>
+  <script src="js/atlas.js?v=26"></script>
+  <script src="js/app.js?v=26"></script>
 </body>
 </html>

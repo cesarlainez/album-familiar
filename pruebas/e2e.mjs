@@ -625,7 +625,7 @@ async function propuestas({ cdp, ev, cargar, base, familia }) {
   await espera(800);
   const wa = await ev("(document.querySelector('#aporteEnlaces a') || {}).href || ''");
   const urlAporte = (/(http:\/\/\S+aportar\.html\S+)/.exec(decodeURIComponent(wa)) || [])[1];
-  anotar('Crear enlace de aportes: queda vigente 14 días y listo para WhatsApp', /^https:\/\/wa\.me\/\?text=/.test(wa) && !!urlAporte && /Vigente hasta/.test(await texto('#aporteEnlaces')), urlAporte);
+  anotar('Crear enlace de aportes: queda vigente 14 días y listo para WhatsApp', /^https:\/\/wa\.me\/\?text=/.test(wa) && !!urlAporte && /vigente hasta/.test(await texto('#aporteEnlaces')), urlAporte);
   const token = new URL(urlAporte).searchParams.get('t');
   anotar('El token del enlace es largo y aleatorio (≥ 32 caracteres)', token && token.length >= 32, token && token.length + ' caracteres');
 
@@ -681,12 +681,12 @@ async function propuestas({ cdp, ev, cargar, base, familia }) {
 
   /* tope de aportes por enlace (el mismo que imponen las reglas) */
   const tope = await ev(`(async () => { const a = JSON.parse(localStorage.getItem('albumFamiliar:aportes:v1'));
-      const e = a.enlaces.Familia_Lainez[${JSON.stringify(token)}]; const antes = e.usos; e.usos = 40;
+      const e = a.enlaces.Familia_Lainez[${JSON.stringify(token)}]; const antes = e.usos; e.usos = 80;
       localStorage.setItem('albumFamiliar:aportes:v1', JSON.stringify(a));
       let msg = ''; try { await AlbumDatos.aportes.enviar('Familia_Lainez', ${JSON.stringify(token)}, { tipo: 'recuerdo', autor: 'X', texto: 'y' }); } catch (err) { msg = err.message; }
       const b = JSON.parse(localStorage.getItem('albumFamiliar:aportes:v1')); b.enlaces.Familia_Lainez[${JSON.stringify(token)}].usos = antes;
       localStorage.setItem('albumFamiliar:aportes:v1', JSON.stringify(b)); return { antes, msg }; })()`);
-  anotar('Un enlace admite como mucho 40 aportes (llevaba ' + tope.antes + ')', tope.antes === 3 && /muchos aportes/.test(tope.msg), tope.msg);
+  anotar('Un enlace admite como mucho 80 aportes (llevaba ' + tope.antes + ')', tope.antes === 3 && /muchos aportes/.test(tope.msg), tope.msg);
 
   /* enlace inventado */
   await cargarAportar(urlAporte.replace(token, 'token-falso-' + 'x'.repeat(20)));
@@ -739,6 +739,81 @@ async function propuestas({ cdp, ev, cargar, base, familia }) {
       return { ref: c.voces[0].ref, audio: audio.slice(0, 11) }; })()`);
   anotar('Restaurar la copia recupera la nota de voz', /^audio:/.test(restaurada.ref) && restaurada.audio === 'data:audio/', JSON.stringify(restaurada));
   await ev("(() => { const d = JSON.parse(localStorage.getItem('albumFamiliar:datos:v1')).filter((p) => p.id_familia !== 'Familia_Restaurada'); localStorage.setItem('albumFamiliar:datos:v1', JSON.stringify(d)); })()");
+
+  /* ── Enlace por primo: «Mi familia» ── */
+  await cargar(base);
+  await ev("document.getElementById('btnAportes').click()"); await espera(500);
+  await ev("document.getElementById('aporteRama').value = 'carlos-alfredo'; document.getElementById('aporteNuevoEnlace').click()");
+  await espera(800);
+  const enlaceRama = await ev("({ texto: document.querySelector('#aporteEnlaces .enlace__estado').textContent, wa: decodeURIComponent(document.querySelector('#aporteEnlaces a').href) })");
+  anotar('Enlace personal: dice para quién es y el mensaje de WhatsApp lo nombra',
+    /^Para Carlos Alfredo Lainez/.test(enlaceRama.texto) && /tu rama \(Carlos Alfredo Lainez\)/.test(enlaceRama.wa), enlaceRama.texto);
+  const urlRama = (/(http:\/\/\S+aportar\.html\S+)/.exec(enlaceRama.wa) || [])[1];
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await cargarAportar(urlRama);
+  const vista = await ev(`({ yo: document.getElementById('ramaYo').value, pestana: document.querySelector('.aportar__tipo.activo').dataset.tipo,
+      nombres: [...document.querySelectorAll('.rama__nombre')].map((x) => x.textContent) })`);
+  anotar('El primo abre directo en «Mi familia», ya ubicado en su rama', vista.yo === 'carlos-alfredo' && vista.pestana === 'rama');
+  anotar('Ve a su pareja, sus padres y sus hijos', ['Yolanda del Carmen Jimenez Benitez de Lainez', 'Julio Cesar Lainez', 'Maria Atanasia Otilia Alvarez Somoza', 'Carlos G. Lainez Jimenez', 'Cesar Alberto Lainez Jimenez'].every((n) => vista.nombres.includes(n)), vista.nombres.length + ' tarjetas');
+  const enTarjeta = (nombre, boton) => ev(`(() => { const t = [...document.querySelectorAll('.rama__tarjeta')].find((x) => x.querySelector('.rama__nombre').textContent === ${JSON.stringify(nombre)});
+      const b = t && [...t.querySelectorAll('button')].find((x) => x.textContent === ${JSON.stringify(boton)}); if (b) b.click(); return !!b; })()`);
+  await ev("document.getElementById('aportarAutor').value = 'Ana'; document.getElementById('aportarRelacion').value = 'prima';");
+  /* hijo nuevo */
+  await enTarjeta('Carlos Alfredo Lainez', '+ Un hijo/a');
+  await espera(300);
+  anotar('«+ Un hijo/a» abre el formulario con el título correcto', /Agregar un hijo o hija de Carlos Alfredo Lainez/.test(await texto('#ramaFormTitulo')));
+  await ev(`document.getElementById('ramaNombre').value = 'Hijo Nuevo Lainez'; document.getElementById('ramaNacimiento').value = '1975';
+            document.getElementById('ramaLugarNac').value = 'SV-SS-C'; document.getElementById('ramaGuardar').click()`);
+  await espera(600);
+  anotar('El hijo nuevo aparece en su rama marcado como agregado', await ev("[...document.querySelectorAll('.rama__tarjeta--nueva .rama__nombre')].some((x) => x.textContent === 'Hijo Nuevo Lainez')"));
+  /* nieta, hija del recién agregado */
+  await enTarjeta('Hijo Nuevo Lainez', '+ Hijo/a');
+  await espera(300);
+  await ev("document.getElementById('ramaNombre').value = 'Nieta Nueva Lainez'; document.getElementById('ramaNacimiento').value = '3/5/2001'; document.getElementById('ramaGuardar').click()");
+  await espera(600);
+  anotar('Se puede agregar a la hija de alguien recién agregado (encadenado)', await ev("[...document.querySelectorAll('.rama__rama')].some((r) => r.style.getPropertyValue('--nivel') === '1' && /Nieta Nueva Lainez/.test(r.textContent))"));
+  /* fecha que no se entiende */
+  await enTarjeta('Julio Cesar Lainez', 'Completar');
+  await espera(300);
+  await ev("document.getElementById('ramaNacimiento').value = 'hace mucho'; document.getElementById('ramaGuardar').click()");
+  await espera(400);
+  anotar('Una fecha que no se entiende se explica antes de enviar', /No entendí la fecha/.test(await texto('#ramaError')));
+  await ev("document.getElementById('ramaCancelar').click()");
+  /* completar a Yolanda con foto */
+  await enTarjeta('Yolanda del Carmen Jimenez Benitez de Lainez', 'Completar');
+  await espera(300);
+  const doc2 = await cdp('DOM.getDocument');
+  const { nodeId: nFoto } = await cdp('DOM.querySelector', { nodeId: doc2.root.nodeId, selector: '#ramaFoto' });
+  await cdp('DOM.setFileInputFiles', { nodeId: nFoto, files: [path.join(RAIZ, 'og-image.jpg')] });
+  await espera(1200);
+  await ev("document.getElementById('ramaNacimiento').value = '1945'; document.getElementById('ramaOcupacion').value = 'Maestra'; document.getElementById('ramaGuardar').click()");
+  await espera(700);
+  anotar('Completar datos con foto queda marcado como enviado', /Datos enviados/.test(await ev("[...document.querySelectorAll('.rama__tarjeta')].find((x) => /Yolanda/.test(x.textContent)).textContent")));
+  anotar('«Mi familia» cabe en el celular', await ev("document.documentElement.scrollWidth <= innerWidth"));
+  await cargarAportar(urlRama);
+  anotar('Al volver otro día, lo agregado sigue ahí', await ev("[...document.querySelectorAll('.rama__tarjeta--nueva .rama__nombre')].map((x) => x.textContent).join('|') === 'Hijo Nuevo Lainez|Nieta Nueva Lainez'"));
+
+  /* la familia aprueba todo */
+  await cdp('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+  await cargar(base);
+  await ev("document.getElementById('btnAportes').click()"); await espera(600);
+  const bandeja = await texto('#aporteBandeja');
+  anotar('La bandeja explica cada propuesta (persona nueva, de quién es y qué cambia)',
+    /Hijo Nuevo Lainez — hijo\/a de Carlos Alfredo Lainez/.test(bandeja) && /también nueva, se aprueba junto/.test(bandeja) && /nacimiento 1944 → 1945/.test(bandeja), bandeja.slice(0, 200));
+  await ev("document.getElementById('aporteAprobarTodo').click()");
+  await espera(2500);
+  const arbol = await ev(`(() => { const d = JSON.parse(localStorage.getItem('albumFamiliar:datos:v1'));
+      const hijo = d.find((p) => p.nombre_completo === 'Hijo Nuevo Lainez'); const nieta = d.find((p) => p.nombre_completo === 'Nieta Nueva Lainez');
+      const y = d.find((p) => p.id === 'yolanda');
+      return { hijo: hijo && [hijo.id_padre, hijo.id_madre, hijo.fecha_nacimiento, hijo.lugares && hijo.lugares.nacimiento.clave],
+               nieta: nieta && [nieta.id_padre === (hijo && hijo.id), nieta.fecha_nacimiento],
+               yolanda: [y.fecha_nacimiento, y.disciplina_artistica, (y.galeria || []).length] }; })()`);
+  anotar('Aprobar todo crea al hijo con sus dos padres, fecha y lugar', JSON.stringify(arbol.hijo) === JSON.stringify(['carlos-alfredo', 'yolanda', '1975', 'SV-SS-C']), JSON.stringify(arbol.hijo));
+  anotar('…y a la nieta colgando del hijo nuevo, con su fecha completa', JSON.stringify(arbol.nieta) === JSON.stringify([true, '2001-05-03']), JSON.stringify(arbol.nieta));
+  anotar('…y completa a Yolanda (año, ocupación y foto)', arbol.yolanda[0] === '1945' && arbol.yolanda[1] === 'Maestra' && arbol.yolanda[2] === 1, JSON.stringify(arbol.yolanda));
+  anotar('Las personas nuevas ya están en el lienzo y la bandeja quedó vacía',
+    (await ev("[...document.querySelectorAll('.nodo__nombre')].some((h) => h.textContent === 'Nieta Nueva Lainez')")) && (await ev("document.querySelectorAll('#aporteBandeja .aporte').length")) === 0);
+  await ev("document.querySelector('#panelAportes [data-cerrar-panel]').click()");
 
   /* ── Puentes ── */
   await cargar(base);

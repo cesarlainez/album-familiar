@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Montserrat:wght@200;300;400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/galeria.css?v=25" />
+  <link rel="stylesheet" href="css/galeria.css?v=26" />
 </head>
 <body>
   <main class="aportar">
@@ -32,7 +32,7 @@
 
     <!-- Formulario -->
     <form class="aportar__caja" id="aportarForm" hidden novalidate>
-      <p class="panel__nota">Tu voz, una foto o un recuerdo ayudan a que la historia no se pierda. Nada se publica hasta que la familia lo revise.</p>
+      <p class="panel__nota">Ayúdanos a que el árbol crezca: completa los datos de tu familia, agrega a quien falte, o deja tu voz, una foto o un recuerdo. Nada se publica hasta que la familia lo revise.</p>
 
       <label class="campo">
         <span class="campo__etiqueta">Tu nombre</span>
@@ -40,25 +40,89 @@
       </label>
       <label class="campo">
         <span class="campo__etiqueta">Parentesco (opcional)</span>
-        <input class="campo__input aportar__input" id="aportarRelacion" type="text" maxlength="40" placeholder="nieta, sobrino, vecina…" />
-      </label>
-      <label class="campo">
-        <span class="campo__etiqueta">¿De quién trata?</span>
-        <select class="campo__input aportar__input" id="aportarPersona"></select>
-      </label>
-      <label class="campo" id="aportarOtraFila" hidden>
-        <span class="campo__etiqueta">Escribe su nombre</span>
-        <input class="campo__input aportar__input" id="aportarOtra" type="text" maxlength="120" />
+        <input class="campo__input aportar__input" id="aportarRelacion" type="text" maxlength="40" placeholder="nieta, sobrino, prima…" />
       </label>
 
-      <div class="aportar__tipos" role="tablist" aria-label="Qué quieres aportar">
-        <button class="aportar__tipo activo" type="button" role="tab" aria-selected="true" data-tipo="voz"><span aria-hidden="true">🎙</span> Grabar mi voz</button>
-        <button class="aportar__tipo" type="button" role="tab" aria-selected="false" data-tipo="foto"><span aria-hidden="true">📷</span> Subir una foto</button>
-        <button class="aportar__tipo" type="button" role="tab" aria-selected="false" data-tipo="recuerdo"><span aria-hidden="true">✍</span> Escribir un recuerdo</button>
+      <div class="aportar__tipos aportar__tipos--cuatro" role="tablist" aria-label="Qué quieres aportar">
+        <button class="aportar__tipo activo" type="button" role="tab" aria-selected="true" data-tipo="rama"><span aria-hidden="true">👪</span> Mi familia</button>
+        <button class="aportar__tipo" type="button" role="tab" aria-selected="false" data-tipo="voz"><span aria-hidden="true">🎙</span> Mi voz</button>
+        <button class="aportar__tipo" type="button" role="tab" aria-selected="false" data-tipo="foto"><span aria-hidden="true">📷</span> Una foto</button>
+        <button class="aportar__tipo" type="button" role="tab" aria-selected="false" data-tipo="recuerdo"><span aria-hidden="true">✍</span> Un recuerdo</button>
+      </div>
+
+      <!-- Mi familia: completar y agregar personas -->
+      <section class="aportar__seccion aportar__seccion--rama" data-seccion="rama">
+        <label class="campo">
+          <span class="campo__etiqueta">¿Quién eres tú en el árbol?</span>
+          <select class="campo__input aportar__input" id="ramaYo"></select>
+        </label>
+        <p class="panel__nota" id="ramaAyuda">Elige tu nombre y verás a tu familia cercana. Toca <strong>Completar</strong> para añadir fechas, lugares o una foto, o <strong>+ Agregar</strong> para sumar a quien falte.</p>
+        <div class="rama" id="ramaLista"></div>
+
+        <!-- Formulario de una persona (nueva o para completar) -->
+        <div class="rama-form" id="ramaForm" hidden>
+          <p class="rama-form__titulo" id="ramaFormTitulo"></p>
+          <label class="campo" id="ramaNombreFila">
+            <span class="campo__etiqueta">Nombre completo</span>
+            <input class="campo__input aportar__input" id="ramaNombre" type="text" maxlength="120" autocomplete="off" />
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Nació (el año basta: 1962)</span>
+            <input class="campo__input aportar__input" id="ramaNacimiento" type="text" inputmode="numeric" maxlength="10" placeholder="1962 o 3/5/1962" />
+          </label>
+          <label class="rama-form__check">
+            <input id="ramaFallecio" type="checkbox" /> Ya falleció
+          </label>
+          <label class="campo" id="ramaFallecimientoFila" hidden>
+            <span class="campo__etiqueta">Falleció (el año basta)</span>
+            <input class="campo__input aportar__input" id="ramaFallecimiento" type="text" inputmode="numeric" maxlength="10" placeholder="2015 o 20/8/2015" />
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">¿Dónde nació?</span>
+            <select class="campo__input aportar__input" id="ramaLugarNac"></select>
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">¿Dónde vive o vivió?</span>
+            <select class="campo__input aportar__input" id="ramaLugarRes"></select>
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Pueblo, cantón o ciudad (opcional)</span>
+            <input class="campo__input aportar__input" id="ramaDetalle" type="text" maxlength="120" placeholder="cantón El Carrizal, Houston…" />
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">¿A qué se dedica o dedicaba? (opcional)</span>
+            <input class="campo__input aportar__input" id="ramaOcupacion" type="text" maxlength="120" />
+          </label>
+          <label class="btn-crud aportar__elegir">
+            <span id="ramaFotoTexto">Agregar una foto (opcional)</span>
+            <input id="ramaFoto" type="file" accept="image/*" hidden />
+          </label>
+          <img class="aporte__foto" id="ramaFotoVista" alt="Vista previa de la foto" hidden />
+          <label class="campo">
+            <span class="campo__etiqueta">Algo que quieras contar de esta persona (opcional)</span>
+            <textarea class="campo__input campo__area aportar__input" id="ramaNota" rows="3" maxlength="4000"></textarea>
+          </label>
+          <p class="candado__error" id="ramaError" role="alert" hidden></p>
+          <div class="rama-form__acciones">
+            <button class="btn-crud btn-crud--primario aportar__enviar" id="ramaGuardar" type="button">Enviar</button>
+            <button class="btn-crud" id="ramaCancelar" type="button">Cancelar</button>
+          </div>
+        </div>
+      </section>
+
+      <div id="aportarDeQuien" hidden>
+        <label class="campo">
+          <span class="campo__etiqueta">¿De quién trata?</span>
+          <select class="campo__input aportar__input" id="aportarPersona"></select>
+        </label>
+        <label class="campo" id="aportarOtraFila" hidden>
+          <span class="campo__etiqueta">Escribe su nombre</span>
+          <input class="campo__input aportar__input" id="aportarOtra" type="text" maxlength="120" />
+        </label>
       </div>
 
       <!-- Voz -->
-      <section class="aportar__seccion" data-seccion="voz">
+      <section class="aportar__seccion" data-seccion="voz" hidden>
         <button class="aportar__grabar" id="aportarGrabar" type="button" aria-live="polite">● Grabar</button>
         <p class="aportar__reloj" id="aportarReloj">Hasta 3 minutos</p>
         <audio class="voz__audio" id="aportarAudio" controls hidden></audio>
@@ -74,13 +138,14 @@
         <img class="aporte__foto" id="aportarVista" alt="Vista previa de la foto" hidden />
       </section>
 
-      <label class="campo">
-        <span class="campo__etiqueta" id="aportarTextoEtiqueta">¿Quieres contar algo más? (opcional)</span>
-        <textarea class="campo__input campo__area aportar__input" id="aportarTexto" rows="4" maxlength="4000"></textarea>
-      </label>
-
-      <p class="candado__error" id="aportarError" role="alert" hidden></p>
-      <button class="btn-crud btn-crud--primario aportar__enviar" id="aportarEnviar" type="submit">Enviar a la familia</button>
+      <div id="aportarPie" hidden>
+        <label class="campo">
+          <span class="campo__etiqueta" id="aportarTextoEtiqueta">¿Quieres contar algo más? (opcional)</span>
+          <textarea class="campo__input campo__area aportar__input" id="aportarTexto" rows="4" maxlength="4000"></textarea>
+        </label>
+        <p class="candado__error" id="aportarError" role="alert" hidden></p>
+        <button class="btn-crud btn-crud--primario aportar__enviar" id="aportarEnviar" type="submit">Enviar a la familia</button>
+      </div>
     </form>
 
     <!-- Gracias -->
@@ -93,9 +158,11 @@
 
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore-compat.js"></script>
-  <script src="js/config.js?v=25"></script>
-  <script src="js/servicios/firebase.js?v=25"></script>
-  <script src="js/datos.js?v=25"></script>
-  <script src="js/aportar.js?v=25"></script>
+  <script src="js/config.js?v=26"></script>
+  <script src="js/servicios/firebase.js?v=26"></script>
+  <script src="js/lugares.js?v=26"></script>
+  <script src="js/datos.js?v=26"></script>
+  <script src="js/rama.js?v=26"></script>
+  <script src="js/aportar.js?v=26"></script>
 </body>
 </html>

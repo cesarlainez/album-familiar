@@ -28,6 +28,7 @@ Album Familiar/
 │  ├─ atlas.js           Atlas de raíces: mapa y línea de tiempo
 │  ├─ aportes.js         Enlaces de aportes y bandeja de revisión
 │  ├─ aportar.js         La página aportar.html
+│  ├─ rama.js            «Mi familia»: completar y agregar personas desde el enlace
 │  ├─ puentes.js         Puentes con otras familias
 │  └─ app.js             Arranque
 └─ backend/
@@ -232,7 +233,7 @@ el backend de hoy (sin servidores ni costos extra).
 
 ### Aportes sin cuenta
 - **Aportes → Crear enlace** genera un enlace con token aleatorio de 192 bits,
-  vigente 14 días y con un tope de 40 aportes (lo imponen las reglas: un enlace
+  vigente 14 días y con un tope de 80 aportes (lo imponen las reglas: un enlace
   filtrado no puede llenar la base), para compartir por WhatsApp.
 - Quien lo abre (`aportar.html`) graba una nota de voz (hasta 3 min, Opus
   24 kbps), sube una foto (se reduce en el teléfono) o escribe un recuerdo.
@@ -242,6 +243,22 @@ el backend de hoy (sin servidores ni costos extra).
   vive aparte (`aportes/{id}/carga/datos`) y se baja al pulsar «Escuchar».
 - Las voces viven en `familias/{id}/audios` y entran en la copia `.zip`
   (carpeta `voces/`), y se restauran con ella.
+
+### Un enlace para cada primo: «Mi familia»
+La forma más fácil de que el árbol crezca: cada rama lo completa por su cuenta.
+- En **Aportes**, elige *Enlace para la rama de…* (por ejemplo, tu prima Ana) y
+  pulsa **Crear enlace**; el mensaje de WhatsApp ya la nombra. Un enlace sin
+  persona también sirve: cada quien elige quién es.
+- Al abrirlo, la pestaña **Mi familia** le muestra su familia cercana (pareja,
+  padres, hijos, nietos) con lo que falta en ámbar. Con **Completar** añade
+  año (basta «1962»), lugares, ocupación, una foto y algo que contar; con
+  **+ Agregar** suma hijos, pareja, padre o madre, y puede seguir con los hijos
+  de quien acaba de agregar. Lo enviado se recuerda en su teléfono.
+- En la bandeja cada propuesta dice qué es y qué cambia («nacimiento 1944 →
+  1945»). **Aprobar todo** crea a las personas ya enlazadas (un hijo queda con
+  sus dos padres; una nieta, con el hijo nuevo). Aprobar dos veces nunca
+  duplica: el perfil creado se llama `ap-<id del aporte>`.
+- Cada enlace acepta hasta 80 envíos (tope de las reglas).
 
 ### Puentes con otras familias
 - **Puentes → Buscar coincidencias** compara este árbol con las familias que

@@ -165,33 +165,88 @@
   /** Lo que la nube también comprueba en sus reglas; aquí se valida antes
    *  de enviar para dar un mensaje claro en vez de un "permiso denegado". */
   const LIMITES_APORTE = { autor: 60, relacion: 40, texto: 4000, datos: 900000 };
-  const MAX_USOS_ENLACE = 40; // aportes por enlace (también en las reglas)
+  const MAX_USOS_ENLACE = 80; // aportes por enlace (también en las reglas)
+
+  /* Campos que un familiar puede proponer de una persona (nueva o ya en
+     el árbol). Todos texto corto: la familia los revisa antes de que
+     toquen el árbol. Las reglas de la nube aceptan exactamente estos. */
+  const CAMPOS_PROPUESTA = ['nombre', 'nacimiento', 'fallecimiento', 'lugar_nacimiento', 'lugar_nacimiento_detalle',
+    'lugar_residencia', 'lugar_residencia_detalle', 'ocupacion'];
+  const VINCULOS = ['hijo', 'pareja', 'padre', 'madre'];
+
+  /** "1962", "1962-05-03" o "3/5/1962" → "1962" / "1962-05-03"; si no se
+   *  entiende, ''. Quien aporta escribe como le sale. */
+  function normalizarFecha(texto) {
+    const t = String(texto || '').trim();
+    let m = /^(\d{4})$/.exec(t);
+    if (m) return m[1];
+    m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
+    if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0');
+    m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(t);
+    if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    return '';
+  }
+
+  function limpiarPropuesta(p) {
+    const salida = {};
+    CAMPOS_PROPUESTA.forEach((k) => {
+      let v = String((p && p[k]) || '').trim().slice(0, 120);
+      if (k === 'nacimiento' || k === 'fallecimiento') v = normalizarFecha(v);
+      if (v) salida[k] = v;
+    });
+    return salida;
+  }
 
   function validarAporte(a) {
-    if (['voz', 'foto', 'recuerdo'].indexOf(a.tipo) === -1) throw new Error('Tipo de aporte desconocido.');
+    if (['voz', 'foto', 'recuerdo', 'persona', 'datos'].indexOf(a.tipo) === -1) throw new Error('Tipo de aporte desconocido.');
     if (!String(a.autor || '').trim()) throw new Error('Escribe tu nombre para que la familia sepa quién aporta.');
     if (String(a.autor).length > LIMITES_APORTE.autor) throw new Error('El nombre es demasiado largo.');
     if (String(a.relacion || '').length > LIMITES_APORTE.relacion) throw new Error('El parentesco es demasiado largo.');
     if (String(a.texto || '').length > LIMITES_APORTE.texto) throw new Error('El recuerdo pasa de 4 000 letras.');
     if (a.tipo === 'recuerdo' && !String(a.texto || '').trim()) throw new Error('Escribe el recuerdo antes de enviarlo.');
-    if (a.tipo !== 'recuerdo') {
+    if (a.tipo === 'voz' || a.tipo === 'foto') {
       if (!/^data:(audio|image)\//.test(String(a.datos || ''))) throw new Error('Falta la grabación o la foto.');
-      if (String(a.datos).length > LIMITES_APORTE.datos) throw new Error('El archivo es demasiado pesado.');
+    }
+    if (a.datos && String(a.datos).length > LIMITES_APORTE.datos) throw new Error('El archivo es demasiado pesado.');
+    if (a.datos && (a.tipo === 'persona' || a.tipo === 'datos') && !/^data:image\//.test(String(a.datos))) {
+      throw new Error('Solo se puede adjuntar una foto.');
+    }
+    if (a.tipo === 'persona' || a.tipo === 'datos') {
+      const p = limpiarPropuesta(a.propuesta);
+      if (!a.persona_id) throw new Error('Falta saber de quién se trata.');
+      if (a.tipo === 'persona') {
+        if (VINCULOS.indexOf(a.vinculo) === -1) throw new Error('Falta el parentesco.');
+        if (!p.nombre) throw new Error('Escribe el nombre de la persona.');
+      }
+      ['nacimiento', 'fallecimiento'].forEach((k) => {
+        if (a.propuesta && String(a.propuesta[k] || '').trim() && !p[k]) {
+          throw new Error('No entendí la fecha «' + a.propuesta[k] + '». Escribe solo el año (1962) o día/mes/año.');
+        }
+      });
+      if (a.tipo === 'datos' && !Object.keys(p).length && !a.datos && !String(a.texto || '').trim()) {
+        throw new Error('No hay nada que enviar todavía: completa algún dato.');
+      }
     }
   }
 
   /** Forma única de un aporte, la misma en local y en la nube. */
   function filaAporte(a) {
-    return {
+    const fila = {
       tipo: a.tipo,
       autor: String(a.autor || '').trim().slice(0, LIMITES_APORTE.autor),
       relacion: String(a.relacion || '').trim().slice(0, LIMITES_APORTE.relacion),
-      persona_id: a.persona_id || '',
+      persona_id: String(a.persona_id || '').slice(0, 140),
       persona_nombre: String(a.persona_nombre || '').slice(0, 120),
       texto: String(a.texto || '').trim().slice(0, LIMITES_APORTE.texto),
       datos: a.tipo === 'recuerdo' ? '' : String(a.datos || ''),
       duracion: Math.max(0, Math.round(Number(a.duracion) || 0)),
     };
+    if (a.tipo === 'persona' || a.tipo === 'datos') {
+      fila.propuesta = limpiarPropuesta(a.propuesta);
+      fila.vinculo = a.tipo === 'persona' ? a.vinculo : '';
+      fila.adjunto = !!fila.datos; // trae foto (va aparte, en la carga)
+    }
+    return fila;
   }
 
   const aportesLocales = {
@@ -201,13 +256,13 @@
       const creado = Date.now();
       const vence = creado + (info.dias || 14) * 86400000;
       a.enlaces[fid] = a.enlaces[fid] || {};
-      a.enlaces[fid][token] = { etiqueta: info.etiqueta || fid, personas: info.personas || [], creado, vence, usos: 0 };
+      a.enlaces[fid][token] = { etiqueta: info.etiqueta || fid, personas: info.personas || [], rama: info.rama || '', creado, vence, usos: 0 };
       guardarAportes(a);
       return { token, creado, vence, usos: 0 };
     },
     async listarEnlaces(fid) {
       const e = almacenAportes().enlaces[fid] || {};
-      return Object.keys(e).map((token) => ({ token, creado: e[token].creado, vence: e[token].vence, usos: e[token].usos || 0 }))
+      return Object.keys(e).map((token) => ({ token, creado: e[token].creado, vence: e[token].vence, usos: e[token].usos || 0, rama: e[token].rama || '' }))
         .sort((x, y) => y.creado - x.creado);
     },
     async revocarEnlace(fid, token) {
@@ -218,7 +273,7 @@
     async leerEnlace(fid, token) {
       const e = (almacenAportes().enlaces[fid] || {})[token];
       if (!e || e.vence < Date.now()) return null;
-      return { etiqueta: e.etiqueta, personas: e.personas || [], vence: e.vence, usos: e.usos || 0 };
+      return { etiqueta: e.etiqueta, personas: e.personas || [], rama: e.rama || '', vence: e.vence, usos: e.usos || 0 };
     },
     async enviar(fid, token, aporte) {
       const a = almacenAportes();
@@ -231,6 +286,7 @@
       a.aportes[fid] = a.aportes[fid] || [];
       a.aportes[fid].push(Object.assign({}, aporte, { id: token + '_' + n, token, creado: Date.now() }));
       guardarAportes(a);
+      return token + '_' + n;
     },
     async listar(fid) {
       return (almacenAportes().aportes[fid] || []).slice().sort((x, y) => x.creado - y.creado);

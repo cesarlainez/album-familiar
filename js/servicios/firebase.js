@@ -249,7 +249,7 @@
      Las reglas (backend/firestore.rules) exigen que aporte, carga y usos
      se escriban juntos y topan cada enlace en MAX_USOS aportes: un enlace
      filtrado no puede llenar la base. */
-  const MAX_USOS = 40;
+  const MAX_USOS = 80;
   const aportes = {
     MAX_USOS,
     async crearEnlace(fid, info) {
@@ -262,6 +262,7 @@
       await colEnlaces(fid).doc(token).set({
         etiqueta: String(info.etiqueta || fid).slice(0, 80),
         personas: (info.personas || []).slice(0, 2000),
+        rama: String(info.rama || '').slice(0, 100),
         creado: T.fromMillis(ahora),
         vence: T.fromMillis(vence),
         usos: 0,
@@ -270,7 +271,7 @@
     },
     async listarEnlaces(fid) {
       const c = await colEnlaces(fid).get();
-      return c.docs.map((d) => ({ token: d.id, creado: ms(d.data().creado), vence: ms(d.data().vence), usos: d.data().usos || 0 }))
+      return c.docs.map((d) => ({ token: d.id, creado: ms(d.data().creado), vence: ms(d.data().vence), usos: d.data().usos || 0, rama: d.data().rama || '' }))
         .sort((x, y) => y.creado - x.creado);
     },
     async revocarEnlace(fid, token) {
@@ -287,18 +288,20 @@
       if (!d.exists) return null;
       const e = d.data();
       if (ms(e.vence) < Date.now()) return null;
-      return { etiqueta: e.etiqueta, personas: e.personas || [], vence: ms(e.vence), usos: e.usos || 0 };
+      return { etiqueta: e.etiqueta, personas: e.personas || [], rama: e.rama || '', vence: ms(e.vence), usos: e.usos || 0 };
     },
     /** Aporte + carga + usos del enlace, en una transacción (las reglas
      *  rechazan cualquiera de las tres por separado). */
     async enviar(fid, token, aporte) {
       const refEnlace = colEnlaces(fid).doc(token);
+      let id = '';
       await bd().runTransaction(async (tx) => {
         const e = await tx.get(refEnlace);
         if (!e.exists || ms(e.data().vence) < Date.now()) throw new Error('El enlace ya no es válido. Pide uno nuevo a tu familia.');
         const n = (e.data().usos || 0) + 1;
         if (n > MAX_USOS) throw new Error('Este enlace ya recibió muchos aportes. Pide uno nuevo a tu familia.');
-        const refAporte = colAportes(fid).doc(token + '_' + n);
+        id = token + '_' + n;
+        const refAporte = colAportes(fid).doc(id);
         const meta = Object.assign({}, aporte, {
           token,
           creado: global.firebase.firestore.FieldValue.serverTimestamp(),
@@ -308,6 +311,7 @@
         if (aporte.datos) tx.set(refAporte.collection('carga').doc('datos'), { datos: aporte.datos });
         tx.update(refEnlace, { usos: n });
       });
+      return id;
     },
     /** La bandeja: solo metadatos (la carga se pide con leerCarga). */
     async listar(fid) {

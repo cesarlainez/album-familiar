@@ -1974,3 +1974,95 @@ html.pagina-aportar body {
 .aportar__enviar { padding: 16px; font-size: 12px; }
 
 .campo__pista { font-size: 11px; font-weight: 300; line-height: 1.4; color: var(--luz-ambar); }
+
+/* ── «Mi familia» en la página de aportes ─────────────────────── */
+
+.aportar__tipos--cuatro { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 420px) {
+  .aportar__tipos--cuatro { grid-template-columns: repeat(2, 1fr); }
+}
+.aportar__seccion--rama { align-items: stretch; }
+.aportar__aviso {
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #1a1407;
+  background: rgba(243, 213, 138, 0.92);
+  border-radius: 3px;
+}
+
+.rama { display: flex; flex-direction: column; gap: 18px; }
+.rama__grupo { display: flex; flex-direction: column; gap: 8px; }
+.rama__titulo {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gris-tenue);
+}
+.rama__rama {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: calc(var(--nivel, 0) * 16px);
+  padding-left: calc(var(--nivel, 0) * 1px);
+  border-left: 1px solid rgba(245, 230, 200, calc(var(--nivel, 0) * 0.18));
+}
+.rama__tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+.rama__tarjeta--nueva { border-color: rgba(243, 213, 138, 0.45); }
+.rama__cabeza { display: flex; flex-direction: column; gap: 2px; }
+.rama__rotulo {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gris-tenue);
+}
+.rama__nombre { font-size: 16px; font-weight: 300; color: var(--blanco-brillo); }
+.rama__datos { font-size: 12px; font-weight: 300; color: var(--gris-claro); }
+.rama__datos--falta { color: var(--luz-ambar); }
+.rama__enviado { font-size: 11px; color: #f3d58a; }
+.rama__acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.rama__acciones .btn-crud { padding: 9px 12px; font-size: 10px; }
+
+.rama-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 14px;
+  background: rgba(243, 213, 138, 0.04);
+  border: 1px solid rgba(243, 213, 138, 0.35);
+  border-radius: 4px;
+}
+.rama-form__titulo {
+  font-family: var(--fuente-titulo);
+  font-size: 17px;
+  font-weight: 300;
+  line-height: 1.35;
+  color: var(--luz-calida);
+}
+.rama-form__check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--gris-claro);
+}
+.rama-form__check input { width: 20px; height: 20px; accent-color: #f3d58a; }
+.rama-form__acciones { display: flex; gap: 10px; }
+.rama-form__acciones .aportar__enviar { flex: 1; }
+
+/* ── Panel de aportes: enlace por persona y aprobar todo ───────── */
+
+.panel__acciones--enlace { align-items: flex-end; }
+.panel__acciones--enlace .campo { flex: 1; min-width: 220px; }
+.panel__fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.panel__fila .panel__seccion { margin-top: 0; }
+.aporte__persona { font-size: 15px; font-weight: 300; color: var(--luz-calida); }
