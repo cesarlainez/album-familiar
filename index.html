@@ -3,33 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Álbum Familiar — La Galería Nocturna</title>
+  <title>Álbum Familiar Laínez — Árbol genealógico interactivo con fotos</title>
 
-  <meta name="description" content="El árbol genealógico interactivo de la Familia Laínez: generaciones de fotos, historias y recuerdos unidos por hilos de luz." />
+  <!-- ═══ SEO: lo que leen Google y los demás buscadores ═══ -->
+  <meta name="description" content="Árbol genealógico interactivo de la Familia Laínez: generaciones de fotos, historias, lugares y recuerdos unidos por hilos de luz. Recórrelo gratis desde tu celular." />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+  <meta name="author" content="Familia Laínez" />
+  <link rel="canonical" href="https://cesarlainez.github.io/album-familiar/" />
+  <link rel="alternate" hreflang="es" href="https://cesarlainez.github.io/album-familiar/" />
+  <link rel="alternate" hreflang="x-default" href="https://cesarlainez.github.io/album-familiar/" />
+  <link rel="sitemap" type="application/xml" href="sitemap.xml" />
+
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icono-192.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#0b0b0b" />
+  <meta name="color-scheme" content="dark" />
 
   <!-- Vista previa al compartir (WhatsApp, Facebook, etc.) -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Álbum Familiar" />
-  <meta property="og:title" content="Álbum Familiar — La Galería Nocturna" />
+  <meta property="og:title" content="Álbum Familiar Laínez — Árbol genealógico interactivo" />
   <meta property="og:description" content="El árbol genealógico interactivo de la Familia Laínez: generaciones de fotos, historias y recuerdos unidos por hilos de luz. Entra a recorrer la constelación." />
   <meta property="og:url" content="https://cesarlainez.github.io/album-familiar/" />
   <meta property="og:image" content="https://cesarlainez.github.io/album-familiar/og-image.jpg" />
+  <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:locale" content="es_ES" />
+  <meta property="og:image:alt" content="Constelación de la Familia Laínez: personas unidas por hilos de luz sobre fondo oscuro" />
+  <meta property="og:locale" content="es_SV" />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Álbum Familiar — La Galería Nocturna" />
+  <meta name="twitter:title" content="Álbum Familiar Laínez — Árbol genealógico interactivo" />
   <meta name="twitter:description" content="El árbol genealógico interactivo de la Familia Laínez. Entra a recorrer la constelación." />
   <meta name="twitter:image" content="https://cesarlainez.github.io/album-familiar/og-image.jpg" />
+  <meta name="twitter:image:alt" content="Constelación de la Familia Laínez: personas unidas por hilos de luz sobre fondo oscuro" />
+
+  <!-- Datos estructurados (schema.org) para resultados enriquecidos -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://cesarlainez.github.io/album-familiar/#sitio",
+        "url": "https://cesarlainez.github.io/album-familiar/",
+        "name": "Álbum Familiar",
+        "alternateName": ["Álbum Familiar Laínez", "Árbol genealógico de la Familia Laínez"],
+        "description": "Árbol genealógico interactivo de la Familia Laínez con fotos, historias, lugares y recuerdos.",
+        "inLanguage": "es",
+        "publisher": { "@id": "https://cesarlainez.github.io/album-familiar/#autor" }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://cesarlainez.github.io/album-familiar/#autor",
+        "name": "César Laínez",
+        "url": "https://github.com/cesarlainez"
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://cesarlainez.github.io/album-familiar/#app",
+        "name": "Álbum Familiar — La Galería Nocturna",
+        "url": "https://cesarlainez.github.io/album-familiar/",
+        "description": "Recorre el árbol genealógico de la Familia Laínez como una constelación: fotos por persona, atlas de lugares, línea de tiempo y descarga en PNG o PDF.",
+        "applicationCategory": "LifestyleApplication",
+        "operatingSystem": "Cualquiera (navegador web)",
+        "inLanguage": "es",
+        "isAccessibleForFree": true,
+        "image": "https://cesarlainez.github.io/album-familiar/og-image.jpg",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": { "@id": "https://cesarlainez.github.io/album-familiar/#autor" },
+        "isPartOf": { "@id": "https://cesarlainez.github.io/album-familiar/#sitio" }
+      }
+    ]
+  }
+  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Montserrat:wght@200;300;400;600&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="css/galeria.css?v=27" />
+  <link rel="stylesheet" href="css/galeria.css?v=28" />
 </head>
 <body>
 
@@ -42,7 +97,8 @@
   <!-- ═══ Encabezado flotante ═══ -->
   <header class="cabecera">
     <div class="cabecera__marca">
-      <span class="cabecera__titulo">Álbum Familiar</span>
+      <h1 class="solo-lectores">Álbum Familiar Laínez: árbol genealógico interactivo con fotos e historias</h1>
+      <span class="cabecera__titulo" aria-hidden="true">Álbum Familiar</span>
       <span class="cabecera__tenant" id="tenantLabel">Familia Lainez</span>
     </div>
     <nav class="cabecera__acciones">
@@ -101,6 +157,16 @@
       <p class="candado__error" id="candadoError" hidden>Clave incorrecta. Intenta de nuevo.</p>
     </div>
   </div>
+
+  <!-- ═══ Sin JavaScript (y para buscadores que no lo ejecutan) ═══ -->
+  <noscript>
+    <section class="sin-js">
+      <h2>El árbol genealógico de la Familia Laínez</h2>
+      <p>El Álbum Familiar reúne a varias generaciones de la Familia Laínez en una constelación interactiva: cada persona con sus fotos, fechas, lugares e historias, unida a padres, parejas e hijos por hilos de luz.</p>
+      <p>Puedes buscar personas, lugares y años, recorrer el atlas de raíces con el mapa y la línea de tiempo, y descargar el árbol como imagen o PDF.</p>
+      <p>Para verlo, activa JavaScript en tu navegador.</p>
+    </section>
+  </noscript>
 
   <!-- ═══ Aviso: este navegador usa otro proyecto (mudanza) ═══ -->
   <div class="aviso aviso--mudanza" id="avisoMudanza" hidden></div>
@@ -463,20 +529,20 @@
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore-compat.js"></script>
 
-  <script src="js/config.js?v=27"></script>
-  <script src="js/servicios/firebase.js?v=27"></script>
-  <script src="js/lugares.js?v=27"></script>
-  <script src="js/datos.js?v=27"></script>
-  <script src="js/lienzo.js?v=27"></script>
-  <script src="js/perfil.js?v=27"></script>
-  <script src="js/mantenimiento.js?v=27"></script>
-  <script src="js/exportar.js?v=27"></script>
-  <script src="js/respaldo.js?v=27"></script>
-  <script src="js/aportes.js?v=27"></script>
-  <script src="js/puentes.js?v=27"></script>
-  <script src="js/buscador.js?v=27"></script>
-  <script src="js/atlas.js?v=27"></script>
-  <script src="js/mudanza.js?v=27"></script>
-  <script src="js/app.js?v=27"></script>
+  <script src="js/config.js?v=28"></script>
+  <script src="js/servicios/firebase.js?v=28"></script>
+  <script src="js/lugares.js?v=28"></script>
+  <script src="js/datos.js?v=28"></script>
+  <script src="js/lienzo.js?v=28"></script>
+  <script src="js/perfil.js?v=28"></script>
+  <script src="js/mantenimiento.js?v=28"></script>
+  <script src="js/exportar.js?v=28"></script>
+  <script src="js/respaldo.js?v=28"></script>
+  <script src="js/aportes.js?v=28"></script>
+  <script src="js/puentes.js?v=28"></script>
+  <script src="js/buscador.js?v=28"></script>
+  <script src="js/atlas.js?v=28"></script>
+  <script src="js/mudanza.js?v=28"></script>
+  <script src="js/app.js?v=28"></script>
 </body>
 </html>

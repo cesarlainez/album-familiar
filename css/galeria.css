@@ -2095,3 +2095,22 @@ html.pagina-aportar body {
   background: rgba(243, 213, 138, 0.95);
 }
 .aviso--mudanza .btn-crud { color: #1a1407; border-color: rgba(26, 20, 7, 0.4); }
+
+/* Texto solo para lectores de pantalla y buscadores (no se ve) */
+.solo-lectores {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Sin JavaScript: presentación mínima del álbum */
+.sin-js {
+  position: relative; z-index: 5;
+  max-width: 640px; margin: 120px auto; padding: 0 16px;
+  color: #e8e2d4; font-family: Inter, sans-serif; line-height: 1.6;
+}
+.sin-js h2 { font-family: Montserrat, sans-serif; font-weight: 300; }
