@@ -291,7 +291,7 @@
     }
 
     /* ── Paneles: buscador, aportes y puentes ─────────────────── */
-    const paneles = ['panelBuscar', 'panelAportes', 'panelPuentes'].map($);
+    const paneles = ['panelBuscar', 'panelAportes', 'panelPuentes', 'panelMudar'].map($);
     const cerrarPaneles = () => paneles.forEach((p) => { p.hidden = true; });
     paneles.forEach((p) => p.querySelectorAll('[data-cerrar-panel]').forEach((el) => el.addEventListener('click', () => { p.hidden = true; })));
 
@@ -343,6 +343,13 @@
       aportes.pintarFicha(p);
       puentes.pintarFicha(p);
     };
+
+    const mudanza = new Mudanza({ toast });
+    $('mudarAbrir').addEventListener('click', () => {
+      menuDescargar.hidden = true;
+      cerrarPaneles();
+      mudanza.abrir();
+    });
 
     $('btnBuscar').addEventListener('click', () => { cerrarPaneles(); buscador.abrir(); });
     $('btnAtlas').addEventListener('click', () => { cerrarPaneles(); atlas.abrir(); });

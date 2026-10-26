@@ -29,6 +29,7 @@ Album Familiar/
 │  ├─ aportes.js         Enlaces de aportes y bandeja de revisión
 │  ├─ aportar.js         La página aportar.html
 │  ├─ rama.js            «Mi familia»: completar y agregar personas desde el enlace
+│  ├─ mudanza.js         Mudar el álbum a otro proyecto de Firebase
 │  ├─ puentes.js         Puentes con otras familias
 │  └─ app.js             Arranque
 └─ backend/
@@ -140,6 +141,28 @@ fotos quedan ahí como archivos normales aunque el código desaparezca.
 
 Guarda el .zip fuera de la máquina: correo, Drive, un disco externo. Hazlo cada
 vez que agregues fotos o personas.
+
+## Mudar el álbum a otro proyecto de Firebase
+
+Para cuando el proyecto actual ya no se puede administrar (por ejemplo, si no se
+sabe con qué cuenta de Google se creó). No se pierde nada:
+
+1. **Descargar → Copia de seguridad (.zip)** desde el álbum (no hace falta la
+   clave: la lectura es pública). Guárdala fuera de la máquina.
+2. Crear el proyecto nuevo con una cuenta que no se vaya a olvidar, siguiendo
+   «Conectar el backend» de arriba, y además en **Authentication → Settings →
+   Dominios autorizados** agregar `cesarlainez.github.io`.
+3. **Descargar → Mudar a otro proyecto…**: pegar el `firebaseConfig` del proyecto
+   nuevo y pulsar **Probar conexión** (dice si responde y si ya tiene las reglas).
+4. **Usar este proyecto en este navegador**: solo este navegador pasa al proyecto
+   nuevo (lo avisa una franja arriba); el resto de la familia sigue en el viejo.
+5. **Iniciar** con la clave NUEVA y **Descargar → Restaurar copia…** con el .zip.
+6. Si todo se ve bien, cambiar el bloque `FIREBASE` de `js/config.js` por el del
+   proyecto nuevo y publicar: desde ese momento toda la familia usa el nuevo.
+   **Volver al proyecto original** deshace el paso 4 en cualquier momento.
+
+Las copias van a `respaldos/`, que está en `.gitignore`: el repositorio es público
+y no debe llevar fotos de la familia.
 
 ## Variables / claves — resumen
 

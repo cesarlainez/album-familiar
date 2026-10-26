@@ -53,6 +53,30 @@ window.ALBUM_CONFIG = {
   AUTH_EMAIL: 'cesarlainez@hotmail.com',
 };
 
+/* ── Mudanza a otro proyecto ─────────────────────────────────
+   «Descargar → Mudar a otro proyecto…» puede guardar en ESTE navegador
+   los datos de un proyecto de Firebase nuevo: así se prueba, se entra
+   con la clave nueva y se restaura la copia antes de cambiar este
+   archivo para todos. Los demás visitantes siguen en el de arriba. */
+(function (cfg) {
+  cfg.FIREBASE_ORIGINAL = Object.assign({}, cfg.FIREBASE);
+  cfg.proyectoAlterno = null;
+  try {
+    const guardado = JSON.parse(localStorage.getItem('albumFamiliar:proyecto') || 'null');
+    if (guardado && /^AIza[\w-]{20,}$/.test(guardado.apiKey || '') && /^[a-z0-9-]{4,40}$/.test(guardado.projectId || '')) {
+      cfg.FIREBASE = {
+        apiKey: guardado.apiKey,
+        authDomain: guardado.authDomain || guardado.projectId + '.firebaseapp.com',
+        projectId: guardado.projectId,
+        storageBucket: guardado.storageBucket || '',
+        messagingSenderId: guardado.messagingSenderId || '',
+        appId: guardado.appId || '',
+      };
+      cfg.proyectoAlterno = guardado.projectId;
+    }
+  } catch (e) { /* sin almacenamiento: se usa el proyecto de siempre */ }
+})(window.ALBUM_CONFIG);
+
 /* ¿Hay credenciales reales o seguimos en modo local? */
 (function (cfg) {
   const sinRellenar = (v) => !v || String(v).indexOf('TU_') === 0;

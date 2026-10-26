@@ -847,6 +847,29 @@ async function propuestas({ cdp, ev, cargar, base, familia }) {
   anotar('«Ver allí» cambia de familia y abre a la misma persona', (await texto('#tenantLabel')) === 'Familia Lainez' && (await texto('#modalNombre')) === 'Yolanda del Carmen Jimenez Benitez de Lainez' && (await ev("document.getElementById('flipCapa').classList.contains('abierta')")));
   await ev("document.querySelector('.carta__cerrar').click()"); await espera(700);
 
+  /* ── Mudar a otro proyecto ── */
+  await cargar(base);
+  await ev("document.getElementById('btnDescargar').click(); document.getElementById('mudarAbrir').click()");
+  await espera(300);
+  anotar('«Mudar a otro proyecto…» abre el panel con el proyecto actual', (await visible('panelMudar')) && /albumfamiliar-101cf/.test(await texto('#mudarActual')));
+  const pegado = `const firebaseConfig = {\n  apiKey: "AIzaSyB-prueba_1234567890abcdefXYZ",\n  authDomain: "album-nuevo-123.firebaseapp.com",\n  projectId: "album-nuevo-123",\n  storageBucket: "album-nuevo-123.firebasestorage.app",\n  messagingSenderId: "111",\n  appId: "1:111:web:abc"\n};`;
+  const leido = await ev(`AlbumMudanza.leerConfig(${JSON.stringify(pegado)})`);
+  anotar('Entiende el firebaseConfig tal como lo muestra la consola', leido && leido.projectId === 'album-nuevo-123' && leido.apiKey.startsWith('AIza') && leido.appId === '1:111:web:abc', JSON.stringify(leido));
+  await ev("document.getElementById('mudarConfig').value = 'hola'; document.getElementById('mudarProbar').click()");
+  await espera(300);
+  anotar('Si lo pegado no sirve, lo dice y no deja usarlo', /No encontré apiKey/.test(await texto('#mudarEstado')) && (await ev("document.getElementById('mudarUsar').disabled")));
+  await ev(`localStorage.setItem('albumFamiliar:proyecto', JSON.stringify(${JSON.stringify(leido)}))`);
+  await cargar(base);
+  const alterno = await ev("({ p: ALBUM_CONFIG.proyectoAlterno, original: ALBUM_CONFIG.FIREBASE_ORIGINAL.projectId, aviso: !document.getElementById('avisoMudanza').hidden && document.getElementById('avisoMudanza').textContent })");
+  anotar('Con un proyecto nuevo guardado, este navegador lo usa y lo avisa', alterno.p === 'album-nuevo-123' && alterno.original === 'albumfamiliar-101cf' && /album-nuevo-123/.test(alterno.aviso), JSON.stringify(alterno));
+  await ev("document.querySelector('#avisoMudanza button').click()");
+  await espera(300);
+  anotar('Desde el aviso se ve la mudanza y se puede volver al original', (await visible('panelMudar')) && (await visible('mudarVolver')));
+  await ev("document.getElementById('mudarVolver').click()");
+  await espera(1500);
+  for (let i = 0; i < 30 && !(await ev("document.readyState === 'complete' && document.querySelectorAll('.nodo').length > 0").catch(() => false)); i++) await espera(200);
+  anotar('«Volver al proyecto original» lo deshace', (await ev("localStorage.getItem('albumFamiliar:proyecto') === null && ALBUM_CONFIG.proyectoAlterno === null && document.getElementById('avisoMudanza').hidden")));
+
   /* ── Celular: el encabezado con más botones sigue cabiendo ── */
   await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await cargar(base);

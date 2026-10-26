@@ -2066,3 +2066,32 @@ html.pagina-aportar body {
 .panel__fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
 .panel__fila .panel__seccion { margin-top: 0; }
 .aporte__persona { font-size: 15px; font-weight: 300; color: var(--luz-calida); }
+
+/* ── Mudanza a otro proyecto ─────────────────────────────────── */
+
+.mudar__pasos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 20px;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--gris-claro);
+}
+.mudar__pasos strong { font-weight: 500; color: var(--blanco-brillo); }
+.mudar__pasos em { color: var(--luz-ambar); font-style: normal; }
+.mudar__pasos .btn-crud { margin-left: 6px; }
+#mudarConfig { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.mudar__estado--ok { color: #9fd59f; }
+.mudar__estado--aviso { color: var(--luz-ambar); }
+.mudar__estado--error { color: #d98a8a; }
+.aviso--mudanza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: #1a1407;
+  background: rgba(243, 213, 138, 0.95);
+}
+.aviso--mudanza .btn-crud { color: #1a1407; border-color: rgba(26, 20, 7, 0.4); }

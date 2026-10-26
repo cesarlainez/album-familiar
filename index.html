@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Montserrat:wght@200;300;400;600&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="css/galeria.css?v=26" />
+  <link rel="stylesheet" href="css/galeria.css?v=27" />
 </head>
 <body>
 
@@ -67,6 +67,8 @@
           <button class="btn-crud" id="descargarRespaldo" type="button" title="Perfiles y fotos en un solo archivo">Copia de seguridad (.zip)</button>
           <button class="btn-crud solo-edicion" id="restaurarRespaldo" type="button" title="Volver a cargar una copia descargada antes">Restaurar copia…</button>
           <input id="archivoRespaldo" type="file" accept=".zip,.json" hidden />
+          <hr class="descargar__sep" />
+          <button class="btn-crud" id="mudarAbrir" type="button" title="Llevar el álbum a otro proyecto de Firebase">Mudar a otro proyecto…</button>
         </div>
       </div>
       <button class="btn-fantasma" id="btnBuscar" title="Buscar personas, lugares, años o familias (tecla /)">Buscar</button>
@@ -99,6 +101,9 @@
       <p class="candado__error" id="candadoError" hidden>Clave incorrecta. Intenta de nuevo.</p>
     </div>
   </div>
+
+  <!-- ═══ Aviso: este navegador usa otro proyecto (mudanza) ═══ -->
+  <div class="aviso aviso--mudanza" id="avisoMudanza" hidden></div>
 
   <!-- ═══ Aviso de persistencia (p. ej. abierto por file://) ═══ -->
   <div class="aviso" id="avisoPersistencia" hidden></div>
@@ -396,6 +401,34 @@
     </div>
   </div>
 
+  <!-- ═══ Mudar el álbum a otro proyecto de Firebase ═══ -->
+  <div class="panel" id="panelMudar" hidden>
+    <div class="panel__velo" data-cerrar-panel></div>
+    <div class="panel__caja" role="dialog" aria-modal="true" aria-labelledby="mudarTitulo">
+      <button class="panel__cerrar" data-cerrar-panel aria-label="Cerrar">&times;</button>
+      <p class="panel__titulo" id="mudarTitulo">Mudar a otro proyecto</p>
+      <p class="panel__nota" id="mudarActual"></p>
+      <ol class="mudar__pasos">
+        <li><strong>Descarga la copia</strong> de este álbum (personas, fotos y voces).
+          <button class="btn-crud btn-crud--mini" id="mudarDescargar" type="button">Descargar copia (.zip)</button></li>
+        <li><strong>Crea un proyecto nuevo</strong> en console.firebase.google.com con una cuenta que no vayas a olvidar: Firestore, la clave familiar en Authentication, las reglas de <em>backend/firestore.rules</em> y el dominio <em>cesarlainez.github.io</em> autorizado (los pasos están en el README).</li>
+        <li><strong>Pega aquí su <em>firebaseConfig</em></strong> (Configuración del proyecto → Tus apps → app web) y pruébalo.</li>
+        <li><strong>Úsalo en este navegador</strong>, pulsa <em>Iniciar</em> con la clave NUEVA y luego <em>Descargar → Restaurar copia…</em> con el .zip.</li>
+        <li>Cuando todo se vea bien, pide que cambien <em>js/config.js</em> para que toda la familia use el proyecto nuevo.</li>
+      </ol>
+      <label class="campo">
+        <span class="campo__etiqueta">firebaseConfig del proyecto nuevo</span>
+        <textarea class="campo__input campo__area" id="mudarConfig" rows="6" spellcheck="false" placeholder='const firebaseConfig = { apiKey: "AIza…", authDomain: "…", projectId: "…", … };'></textarea>
+      </label>
+      <div class="panel__acciones">
+        <button class="btn-crud" id="mudarProbar" type="button">Probar conexión</button>
+        <button class="btn-crud btn-crud--primario" id="mudarUsar" type="button" disabled>Usar este proyecto en este navegador</button>
+        <button class="btn-crud btn-crud--peligro" id="mudarVolver" type="button" hidden>Volver al proyecto original</button>
+      </div>
+      <p class="panel__nota" id="mudarEstado" role="status"></p>
+    </div>
+  </div>
+
   <!-- ═══ Atlas de raíces: mapa y línea de tiempo ═══ -->
   <div class="atlas" id="atlas" hidden role="dialog" aria-modal="true" aria-labelledby="atlasTitulo">
     <div class="atlas__barra">
@@ -430,19 +463,20 @@
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore-compat.js"></script>
 
-  <script src="js/config.js?v=26"></script>
-  <script src="js/servicios/firebase.js?v=26"></script>
-  <script src="js/lugares.js?v=26"></script>
-  <script src="js/datos.js?v=26"></script>
-  <script src="js/lienzo.js?v=26"></script>
-  <script src="js/perfil.js?v=26"></script>
-  <script src="js/mantenimiento.js?v=26"></script>
-  <script src="js/exportar.js?v=26"></script>
-  <script src="js/respaldo.js?v=26"></script>
-  <script src="js/aportes.js?v=26"></script>
-  <script src="js/puentes.js?v=26"></script>
-  <script src="js/buscador.js?v=26"></script>
-  <script src="js/atlas.js?v=26"></script>
-  <script src="js/app.js?v=26"></script>
+  <script src="js/config.js?v=27"></script>
+  <script src="js/servicios/firebase.js?v=27"></script>
+  <script src="js/lugares.js?v=27"></script>
+  <script src="js/datos.js?v=27"></script>
+  <script src="js/lienzo.js?v=27"></script>
+  <script src="js/perfil.js?v=27"></script>
+  <script src="js/mantenimiento.js?v=27"></script>
+  <script src="js/exportar.js?v=27"></script>
+  <script src="js/respaldo.js?v=27"></script>
+  <script src="js/aportes.js?v=27"></script>
+  <script src="js/puentes.js?v=27"></script>
+  <script src="js/buscador.js?v=27"></script>
+  <script src="js/atlas.js?v=27"></script>
+  <script src="js/mudanza.js?v=27"></script>
+  <script src="js/app.js?v=27"></script>
 </body>
 </html>

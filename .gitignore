@@ -9,3 +9,7 @@ backend/.env
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Copias de seguridad del álbum: llevan fotos de la familia y el repo es público
+respaldos/
+*.zip
