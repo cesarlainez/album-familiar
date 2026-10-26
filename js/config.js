@@ -27,14 +27,16 @@ window.ALBUM_CONFIG = {
   BACKEND: 'firebase',
 
   /* ── Firebase ───────────────────────────────────────────────
-     Proyecto: albumfamiliar-101cf (registrado el 26/09/2026). */
+     Proyecto: album-familiar-lainez (mudado desde albumfamiliar-101cf,
+     cuya cuenta de Google ya no se recordaba). Este es el proyecto que
+     usa TODA la familia: cuenta de Firebase = cesaralainez@gmail.com. */
   FIREBASE: {
-    apiKey: 'AIzaSyDIPH1GuaXbFxkRexkZp63FFtiUqnQM3Po',
-    authDomain: 'albumfamiliar-101cf.firebaseapp.com',
-    projectId: 'albumfamiliar-101cf',
-    storageBucket: 'albumfamiliar-101cf.firebasestorage.app',
-    messagingSenderId: '513248577246',
-    appId: '1:513248577246:web:f01a4ca8150dc1f1a0244f',
+    apiKey: 'AIzaSyBaUTbEhEkTSjvdxnPbmi6D1VmHlMDWtuE',
+    authDomain: 'album-familiar-lainez.firebaseapp.com',
+    projectId: 'album-familiar-lainez',
+    storageBucket: 'album-familiar-lainez.firebasestorage.app',
+    messagingSenderId: '748664627285',
+    appId: '1:748664627285:web:5cabcdd94f9f7f4048b4dc',
   },
 
   /* ── Supabase (backend anterior, en desuso) ───────────────── */
